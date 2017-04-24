@@ -2,22 +2,23 @@
 Event type enumerations.
 
 An event type defines a unique event and the logic for evaluating state transitions using
-a DNF mini grammar:
+a DNF-compatible mini-grammar:
 
- -  An event can *follow* a disjuction of following conditions
- -  A following condition can match an event type exactly
- -  A following condition can match a conjunction of following conditions
- -  A following condition can match the negation of a following conditions
+ -  An event can legally follow another another event (`event(name)`)
+ -  An event can legally follow a disjunction of conditions (`any_of(...)`)
+ -  An event can legally follow a conjunction of conditions (`all_of(...)`)
+ -  An event can legally follow a negation of a conditon (`but_not(...)`)
 
-This matching logic is applied against `state`, which will either be the most recent
-`event_type` or some accumulation of `event_types` over recent states. By default, state
-**DOES NOT** accumulate; but individual event types may choose set `accumulating=True`
+This matching logic is applied against accumulated event `state`, which will be an iterable
+of the N most recent event type values, where N is determined by the most recent event type
+that does not defines the attribute `accumulating=True`.
+
 
 """
 from enum import Enum
 
 
-def id_(name):
+def event(name):
     """
     Mini grammar to match a specific event type.
 
@@ -32,7 +33,15 @@ def normalize(value):
     """
     if callable(value):
         return value
-    return id_(value)
+    return event(value)
+
+
+def any_of(*args):
+    """
+    Mini grammar to match a list of event types.
+
+    """
+    return lambda cls, state: any(normalize(item)(cls, state) for item in args)
 
 
 def all_of(*args):
@@ -63,7 +72,7 @@ class EventTypeInfo(object):
         :param restarting: whether the event type may restart a (new) version
 
         """
-        self.follows = frozenset(normalize(value) for value in follows)
+        self.follows = follows
         self.accumulating = accumulating
         self.restarting = restarting
         self.requires = requires
@@ -126,14 +135,12 @@ class EventType(Enum):
         if parent is None:
             return self.is_initial
 
+        if self.is_initial:
+            return False
+
         # otherwise, inspect state
         state = {event_type for event_type in parent.state}
-
-        # `follows` defines a disjuction of conjuctions
-        for condition in self.value.follows:
-            if condition(self.__class__, state):
-                return True
-        return False
+        return self.value.follows(self.__class__, state)
 
     def __lt__(self, other):
         return self.name < other.name

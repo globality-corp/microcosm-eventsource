@@ -15,7 +15,7 @@ from microcosm_postgres.store import Store
 from sqlalchemy import Column, DateTime, String
 
 from microcosm_eventsource.controllers import EventController
-from microcosm_eventsource.event_types import all_of, but_not, info, EventType
+from microcosm_eventsource.event_types import all_of, any_of, but_not, event, info, EventType
 from microcosm_eventsource.models import EventMeta
 from microcosm_eventsource.resources import EventSchema, SearchEventSchema
 from microcosm_eventsource.routes import configure_event_crud
@@ -25,38 +25,38 @@ from microcosm_eventsource.stores import EventStore
 class TaskEventType(EventType):
     CREATED = info()
     ASSIGNED = info(
-        follows=[all_of("CREATED", but_not("ASSIGNED"))],
+        follows=all_of("CREATED", but_not("ASSIGNED")),
         accumulating=True,
         requires=["assignee"],
     )
     SCHEDULED = info(
-        follows=[all_of("CREATED", but_not("SCHEDULED"))],
+        follows=all_of("CREATED", but_not("SCHEDULED")),
         accumulating=True,
         requires=["deadline"],
     )
     STARTED = info(
-        follows=[all_of("ASSIGNED", "SCHEDULED")],
+        follows=all_of("ASSIGNED", "SCHEDULED"),
     )
     REASSIGNED = info(
-        follows=["STARTED"],
+        follows=event("STARTED"),
         accumulating=True,
         requires=["assignee"],
     )
     RESCHEDULED = info(
-        follows=["STARTED"],
+        follows=event("STARTED"),
         accumulating=True,
         requires=["deadline"],
     )
     REVISED = info(
-        follows=["CREATED", "STARTED"],
+        follows=any_of("CREATED", "STARTED"),
         # XXX need to support jumping to state CREATED
         restarting=True,
     )
     CANCELED = info(
-        follows=["STARTED"],
+        follows=event("STARTED"),
     )
     COMPLETED = info(
-        follows=["STARTED"],
+        follows=event("STARTED"),
     )
 
 
