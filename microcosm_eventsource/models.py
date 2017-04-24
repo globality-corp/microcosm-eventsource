@@ -128,6 +128,10 @@ class EventMeta(MetaClass):
         }
 
     def make_table_args(cls, container_id_name, event_type):
+        """
+        Generate the event table's `__table_args__` value.
+
+        """
         return cls.make_indexes(
             cls,
             container_id_name,
@@ -140,6 +144,10 @@ class EventMeta(MetaClass):
         )
 
     def make_indexes(cls, container_id_name):
+        """
+        Declare expected indexes.
+
+        """
         return (
             # logical clock is unique and indexed
             Index(
@@ -160,6 +168,10 @@ class EventMeta(MetaClass):
         )
 
     def make_state_machine_constraints(cls, event_type):
+        """
+        Enforce that each state machine defines a proper linked list.
+
+        """
         return (
             # events must have a parent unless they are initial and its the first version
             CheckConstraint(
@@ -171,19 +183,19 @@ class EventMeta(MetaClass):
         )
 
     def make_column_constraints(cls, event_type):
-        return (
+        """
+        Event tables are polymorphic and cannot enforce column-level nullability.
+
+        Fortunately, check contraints can enforce non-nullability by event type.
+
+        """
+        return tuple(
             CheckConstraint(
-                name="require_{}".format("assignee"),
+                name="require_{}".format(column_name),
                 sqltext="{} IS NOT NULL OR event_type NOT IN ({})".format(
-                    "assignee",
-                    join_event_types(item for item in event_type.requires("assignee"))
+                    column_name,
+                    join_event_types(item for item in event_type.requires(column_name))
                 ),
-            ),
-            CheckConstraint(
-                name="require_{}".format("deadline"),
-                sqltext="{} IS NOT NULL OR event_type NOT IN ({})".format(
-                    "deadline",
-                    join_event_types(item for item in event_type.requires("deadline"))
-                ),
-            ),
+            )
+            for column_name in event_type.required_column_names()
         )

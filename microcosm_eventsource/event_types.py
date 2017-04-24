@@ -99,6 +99,14 @@ class EventType(Enum):
         return self.value.restarting
 
     @classmethod
+    def required_column_names(cls):
+        return {
+            column_name
+            for event_type in cls
+            for column_name in event_type.value.requires
+        }
+
+    @classmethod
     def requires(cls, column_name):
         return [
             event_type
