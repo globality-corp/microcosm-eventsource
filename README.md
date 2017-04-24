@@ -86,8 +86,8 @@ For example:
 It remains to define the legal events and their transitions using an enumeration. This is done
 as follows:
 
- -  Each enumerated value is identified using its (right hand side) `name`.
- -  Each enumerated value is configured using its (left hand side) meta data.
+ -  Each enumerated value is identified using its (left hand side) `name`.
+ -  Each enumerated value is configured using its (right hand side) meta data.
  -  This meta data includes:
      -  "following conditions" for legal state transitions.
      -  a flag controlling whether state accumulates through this transition
@@ -101,7 +101,7 @@ Example:
         ASSIGNED = info(
             follows=[all_of("CREATED", but_not("ASSIGNED"))],
             accumulating=True,
-            requires=["assignee"]
+            requires=["assignee"],
         )
         SCHEDULED = info(
             follows=[all_of("CREATED", but_not("SCHEDULED"))],

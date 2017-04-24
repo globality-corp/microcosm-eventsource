@@ -9,8 +9,9 @@ a DNF mini grammar:
  -  A following condition can match a conjunction of following conditions
  -  A following condition can match the negation of a following conditions
 
-This matching logic depends is applied again *state* accumulation. By default, event state
-**DOES NOT** accumulate; but individual event types may choose to accumulate via configuration.
+This matching logic is applied against `state`, which will either be the most recent
+`event_type` or some accumulation of `event_types` over recent states. By default, state
+**DOES NOT** accumulate; but individual event types may choose set `accumulating=True`
 
 """
 from enum import Enum

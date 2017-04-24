@@ -27,7 +27,7 @@ class TaskEventType(EventType):
     ASSIGNED = info(
         follows=[all_of("CREATED", but_not("ASSIGNED"))],
         accumulating=True,
-        requires=["assignee"]
+        requires=["assignee"],
     )
     SCHEDULED = info(
         follows=[all_of("CREATED", but_not("SCHEDULED"))],
