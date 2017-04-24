@@ -14,8 +14,10 @@ from microcosm_postgres.models import Model, UnixTimestampEntityMixin
 from microcosm_postgres.store import Store
 from sqlalchemy import Column, DateTime, String
 
+from microcosm_eventsource.accumulation import alias, union
 from microcosm_eventsource.controllers import EventController
-from microcosm_eventsource.event_types import all_of, any_of, but_not, event, event_info, EventType
+from microcosm_eventsource.transitioning import all_of, any_of, but_not, event
+from microcosm_eventsource.event_types import event_info, EventType
 from microcosm_eventsource.models import EventMeta
 from microcosm_eventsource.resources import EventSchema, SearchEventSchema
 from microcosm_eventsource.routes import configure_event_crud
@@ -26,12 +28,12 @@ class TaskEventType(EventType):
     CREATED = event_info()
     ASSIGNED = event_info(
         follows=all_of("CREATED", but_not("ASSIGNED")),
-        accumulating=True,
+        accumulate=union(),
         requires=["assignee"],
     )
     SCHEDULED = event_info(
         follows=all_of("CREATED", but_not("SCHEDULED")),
-        accumulating=True,
+        accumulate=union(),
         requires=["deadline"],
     )
     STARTED = event_info(
@@ -39,17 +41,17 @@ class TaskEventType(EventType):
     )
     REASSIGNED = event_info(
         follows=event("STARTED"),
-        accumulating=True,
+        accumulate=union(),
         requires=["assignee"],
     )
     RESCHEDULED = event_info(
         follows=event("STARTED"),
-        accumulating=True,
+        accumulate=union(),
         requires=["deadline"],
     )
     REVISED = event_info(
         follows=any_of("CREATED", "STARTED"),
-        # XXX need to support jumping to state CREATED
+        accumulate=alias("CREATED"),
         restarting=True,
     )
     CANCELED = event_info(

@@ -1,18 +1,20 @@
 """
 Event type enumerations.
 
-An event type defines a unique event and the logic for evaluating state transitions using
-a DNF-compatible mini-grammar:
+As events are processed, they accumulate a `state` as a list of event types, using
+a pluggable rule system:
 
- -  An event can legally follow another another event (`event(name)`)
- -  An event can legally follow a disjunction of conditions (`any_of(...)`)
- -  An event can legally follow a conjunction of conditions (`all_of(...)`)
- -  An event can legally follow a negation of a conditon (`but_not(...)`)
+ -  The state can be the current event: `current()`
+ -  The state can be a union of the current event and the current state: `union()`
+ -  The state can be another state: `alias()`
 
-This matching logic is applied against accumulated event `state`, which will be an iterable
-of the N most recent event type values, where N is determined by the most recent event type
-that does not defines the attribute `accumulating=True`.
+State machine transitions are defined using a DNF-compatible mini-language that processes
+this accumulated `state` and the current event:
 
+ -  An event can legally follow another another event: `event(name)`
+ -  An event can legally follow a disjunction of conditions: `any_of(...)`
+ -  An event can legally follow a conjunction of conditions: `all_of(...)`
+ -  An event can legally follow a negation of a conditon: `but_not(...)`
 
 """
 from enum import Enum
@@ -21,59 +23,8 @@ from microcosm_eventsource.errors import (
     IllegalInitialStateError,
     IllegalStateTransitionError,
 )
-
-
-class Initial(object):
-
-    def __call__(self, cls, state):
-        return False
-
-    def __bool__(self):
-        return False
-
-    __nonzero__ = __bool__
-
-
-def event(name):
-    """
-    Mini grammar to match a specific event type.
-
-    """
-    return lambda cls, state: cls[name] in state
-
-
-def normalize(value):
-    """
-    Normalize string values into id functions.
-
-    """
-    if callable(value):
-        return value
-    return event(value)
-
-
-def any_of(*args):
-    """
-    Mini grammar to match a list of event types.
-
-    """
-    return lambda cls, state: any(normalize(item)(cls, state) for item in args)
-
-
-def all_of(*args):
-    """
-    Mini grammar to match a list of event types.
-
-    """
-    return lambda cls, state: all(normalize(item)(cls, state) for item in args)
-
-
-def but_not(func):
-    """
-    Mini grammar to not match a specific event type.
-
-    """
-    return lambda cls, state: not normalize(func)(cls, state)
+from microcosm_eventsource.accumulation import current
+from microcosm_eventsource.transitioning import nothing
 
 
 class EventTypeInfo(object):
@@ -81,15 +32,15 @@ class EventTypeInfo(object):
     Event type meta data.
 
     """
-    def __init__(self, follows=None, accumulating=False, restarting=False, requires=()):
+    def __init__(self, follows=None, accumulate=None, restarting=False, requires=()):
         """
-        :params follows:    an instance of the event mini-grammar
-        :param accumulating:  whether the event type should accumulating state
+        :param follows:    an instance of the event mini-grammar
+        :param accumulate:  whether the event type should accumulating state
         :param restarting: whether the event type may restart a (new) version
 
         """
-        self.follows = follows or Initial()
-        self.accumulating = accumulating
+        self.follows = follows or nothing()
+        self.accumulate = accumulate or current()
         self.restarting = restarting
         self.requires = requires
 
@@ -179,10 +130,7 @@ class EventType(Enum):
         Accumulate state.
 
         """
-        if self.is_accumulating:
-            return sorted(state | {self, })
-        else:
-            return [self]
+        return self.value.accumulate(state, self)
 
     def next_version(self, version):
         """

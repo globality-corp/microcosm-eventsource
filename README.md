@@ -102,12 +102,12 @@ Example:
         CREATED = event_info()
         ASSIGNED = event_info(
             follows=all_of("CREATED", but_not("ASSIGNED")),
-            accumulating=True,
+            accumulate=union(),
             requires=["assignee"],
         )
         SCHEDULED = event_info(
             follows=all_of("CREATED", but_not("SCHEDULED")),
-            accumulating=True,
+            accumulate=union(),
             requires=["deadline"],
         )
         STARTED = event_info(
@@ -115,12 +115,12 @@ Example:
         )
         REASSIGNED = event_info(
             follows=event("STARTED"),
-            accumulating=True,
+            accumulate=union(),
             requires=["assignee"],
         )
         RESCHEDULED = event_info(
             follows=event("STARTED"),
-            accumulating=True,
+            accumulate=union(),
             requires=["deadline"],
         )
         REVISED = event_info(
