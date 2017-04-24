@@ -5,6 +5,8 @@ Event store.
 from microcosm_postgres.store import Store
 from sqlalchemy.dialects.postgresql import insert
 
+from microcosm_eventsource.errors import ConcurrentStateConflictError
+
 
 class EventStore(Store):
     """
@@ -32,25 +34,32 @@ class EventStore(Store):
             self.model_class.event_type == event_type,
         )
 
-    def upsert_unique_event(self, instance):
+    def upsert_on_parent_id(self, instance):
         """
-        Upsert a unique event.
+        Upsert an event by parent id.
 
         Uses ON CONFLICT ... DO NOTHING to handle uniqueness constraint violations without
         invalidating the current transactions completely.
 
-        Depends on the project + event_type unique constraint to find the resulting entry.
+        Depends on the parent_id unique constraint to find the resulting entry.
 
         """
         with self.flushing():
-            self.session.execute(
-                insert(self.model_class).values(instance._members()).on_conflict_do_nothing()
+            insert_statement = insert(self.model_class).values(
+                instance._members(),
             )
+            upsert_statement = insert_statement.on_conflict_do_nothing(
+                index_elements=["parent_id"],
+            )
+            self.session.execute(upsert_statement)
 
-        return self._retrieve_most_recent(
-            self.model_class.container_id == instance.container_id,
-            self.model_class.event_type == instance.event_type,
+        most_recent = self._retrieve_most_recent(
+            self.model_class.parent_id == instance.parent_id,
         )
+        if not most_recent.is_similar_to(instance):
+            raise ConcurrentStateConflictError()
+
+        return most_recent
 
     def _filter(self,
                 query,

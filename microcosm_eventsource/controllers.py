@@ -77,10 +77,18 @@ class EventController(CRUDStoreAdapter):
         """
         Create the event.
 
+        If the event has a parent id, uses an upsert to handle concurrent operations
+        that produce the *same* event.
+
         """
-        parent_id = parent.id if parent else None
-        # XXX we should upsert here as long as we can reason about the constraints
-        return self.store.create(
+        if parent is None:
+            parent_id = None
+            create_func = self.store.create
+        else:
+            parent_id = parent.id
+            create_func = self.store.upsert_on_parent_id
+
+        return create_func(
             self.store.model_class(
                 event_type=event_type,
                 parent_id=parent_id,

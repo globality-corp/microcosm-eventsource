@@ -46,6 +46,20 @@ def join_event_types(event_types):
     )
 
 
+class BaseEvent(object):
+
+    def is_similar_to(self, other):
+        """
+        Are two events similar enough to activate upserting?
+
+        """
+        return all((
+            self.event_type == other.event_type,
+            self.parent_id == other.parent_id,
+            self.container_id == other.container_id
+        ))
+
+
 class EventMeta(MetaClass):
     """
     Construct event models using a metaclass.
@@ -68,7 +82,7 @@ class EventMeta(MetaClass):
 
         """
         # add model to expected bases
-        bases = bases + (Model,)
+        bases = bases + (BaseEvent, Model,)
 
         # declare event columns and indexes
         dct.update(cls.make_declarations(

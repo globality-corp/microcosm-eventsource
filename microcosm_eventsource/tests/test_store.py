@@ -19,6 +19,7 @@ from microcosm.api import create_object_graph
 from microcosm_postgres.context import SessionContext, transaction
 from microcosm_postgres.errors import DuplicateModelError, ModelIntegrityError
 
+from microcosm_eventsource.errors import ConcurrentStateConflictError
 from microcosm_eventsource.tests.fixtures import (
     Task,
     TaskEvent,
@@ -173,9 +174,9 @@ class TestEventStore(object):
             raises(DuplicateModelError),
         )
 
-    def test_upsert_unique_event(self):
+    def test_upsert_on_parent_id(self):
         """
-        Events that represent a unique state can be upserted.
+        Events with a duplicate parent id can be upserted.
 
         """
         with transaction():
@@ -191,7 +192,7 @@ class TestEventStore(object):
             )
             self.store.create(task_event)
 
-        upserted = self.store.upsert_unique_event(
+        upserted = self.store.upsert_on_parent_id(
             TaskEvent(
                 event_type=TaskEventType.CREATED,
                 parent_id=created_event.id,
@@ -200,3 +201,30 @@ class TestEventStore(object):
         )
 
         assert_that(task_event.id, is_(equal_to(upserted.id)))
+
+    def test_upsert_on_parent_id_mismatch(self):
+        """
+        Events with a duplicate parent id cannot be upsert if they don't match.
+
+        """
+        with transaction():
+            created_event = TaskEvent(
+                event_type=TaskEventType.CREATED,
+                task_id=self.task.id,
+            )
+            self.store.create(created_event)
+            task_event = TaskEvent(
+                event_type=TaskEventType.CREATED,
+                parent_id=created_event.id,
+                task_id=self.task.id,
+            )
+            self.store.create(task_event)
+
+        assert_that(
+            calling(self.store.upsert_on_parent_id).with_args(TaskEvent(
+                event_type=TaskEventType.REVISED,
+                parent_id=created_event.id,
+                task_id=self.task.id,
+            )),
+            raises(ConcurrentStateConflictError),
+        )
