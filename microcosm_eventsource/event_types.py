@@ -35,7 +35,7 @@ class EventTypeInfo(object):
     def __init__(self, follows=None, accumulate=None, restarting=False, requires=()):
         """
         :param follows:    an instance of the event mini-grammar
-        :param accumulate:  whether the event type should accumulating state
+        :param accumulate: whether the event type should accumulating state
         :param restarting: whether the event type may restart a (new) version
 
         """
