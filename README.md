@@ -38,6 +38,8 @@ by a new event:
             \                             /         \
               => SCHEDULED => ASSIGNED =>             => COMPLETED
 
+(For simplicity, the `REASSIGNED`, `RESCHEDULED`, and `REVISED` events are not shown.)
+
 
 ### Defining Tasks
 
