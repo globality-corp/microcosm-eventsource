@@ -2,7 +2,7 @@
 Event type enumerations.
 
 An event type defines a unique event and the logic for evaluating state transitions using
-a DNS mini grammar:
+a DNF mini grammar:
 
  -  An event can *follow* a disjuction of following conditions
  -  A following condition can match an event type exactly
