@@ -76,11 +76,12 @@ class EventMeta(MetaClass):
             container_name=dct["__container__"].__tablename__,
             event_type=dct["__eventtype__"],
             table_name=dct["__tablename__"],
+            table_args=dct.get("__table_args__", ()),
         ))
 
         return super(EventMeta, cls).__new__(cls, name, bases, dct)
 
-    def make_declarations(cls, container_name, event_type, table_name):
+    def make_declarations(cls, container_name, event_type, table_name, table_args):
         """
         Declare columns and indexes.
 
@@ -124,7 +125,7 @@ class EventMeta(MetaClass):
             "container_id_name": container_id_name,
 
             # indexes and constraints
-            "__table_args__": cls.make_table_args(cls, container_id_name, event_type),
+            "__table_args__": table_args + cls.make_table_args(cls, container_id_name, event_type),
         }
 
     def make_table_args(cls, container_id_name, event_type):
@@ -156,15 +157,9 @@ class EventMeta(MetaClass):
                 "clock",
                 unique=True,
             ),
-            # events are unique per container, event type, and version
-            # XXX this won't work for some types of events
-            Index(
-                "unique_event_type",
-                container_id_name,
-                "event_type",
-                "version",
-                unique=True,
-            ),
+            # NB: it's often but (not always) appropriate to have a unique index on the
+            # combination of container id, event type, and version; for now this should
+            # be added by the user.
         )
 
     def make_state_machine_constraints(cls, event_type):

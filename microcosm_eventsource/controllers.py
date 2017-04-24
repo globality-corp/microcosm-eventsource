@@ -11,11 +11,6 @@ from microcosm_flask.operations import Operation
 from microcosm_pubsub.conventions import created
 from werkzeug.exceptions import UnprocessableEntity
 
-from microcosm_eventsource.errors import (
-    IllegalInitialStateError,
-    IllegalStateTransitionError,
-)
-
 
 class EventController(CRUDStoreAdapter):
 
@@ -72,44 +67,23 @@ class EventController(CRUDStoreAdapter):
         to persist.
 
         """
-        if not event_type.is_legal_after(parent):
-            if parent is None:
-                # event may not be initial
-                raise IllegalInitialStateError("Event type '{}' may not be initial".format(
-                    event_type.name,
-                ))
-            else:
-                # event may not follow previous
-                raise IllegalStateTransitionError("Event type '{}' may not follow [{}]".format(
-                    event_type.name,
-                    ", ".join(item.name for item in parent.state),
-                ))
-
-        parent_version = parent.version if parent else 1
-        parent_state = parent.state if parent else []
-
-        if event_type.is_accumulating:
-            state = parent_state + [event_type]
-        else:
-            state = [event_type]
-
-        if event_type.is_restarting:
-            version = parent_version + 1
-        else:
-            version = parent_version
-
-        return version, state
+        state = set(parent.state) if parent else set()
+        event_type.validate_transition(state)
+        new_state = event_type.accumulate_state(state)
+        new_version = event_type.next_version(parent.version if parent else None)
+        return new_version, new_state
 
     def create_event(self, parent, event_type, version, state, **kwargs):
         """
         Create the event.
 
         """
+        parent_id = parent.id if parent else None
         # XXX we should upsert here as long as we can reason about the constraints
         return self.store.create(
             self.store.model_class(
                 event_type=event_type,
-                parent_id=parent.id if parent else None,
+                parent_id=parent_id,
                 state=state,
                 version=version,
                 **kwargs

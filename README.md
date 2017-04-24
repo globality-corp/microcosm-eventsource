@@ -99,37 +99,37 @@ as follows:
 Example:
 
     class TaskEventType(EventType):
-        CREATED = info()
-        ASSIGNED = info(
+        CREATED = event_info()
+        ASSIGNED = event_info(
             follows=all_of("CREATED", but_not("ASSIGNED")),
             accumulating=True,
             requires=["assignee"],
         )
-        SCHEDULED = info(
+        SCHEDULED = event_info(
             follows=all_of("CREATED", but_not("SCHEDULED")),
             accumulating=True,
             requires=["deadline"],
         )
-        STARTED = info(
+        STARTED = event_info(
             follows=all_of("ASSIGNED", "SCHEDULED"),
         )
-        REASSIGNED = info(
+        REASSIGNED = event_info(
             follows=event("STARTED"),
             accumulating=True,
             requires=["assignee"],
         )
-        RESCHEDULED = info(
+        RESCHEDULED = event_info(
             follows=event("STARTED"),
             accumulating=True,
             requires=["deadline"],
         )
-        REVISED = info(
+        REVISED = event_info(
             follows=any_of("CREATED", "STARTED"),
             restarting=True,
         )
-        CANCELED = info(
+        CANCELED = event_info(
             follows=event("STARTED"),
         )
-        COMPLETED = info(
+        COMPLETED = event_info(
             follows=event("STARTED"),
         )

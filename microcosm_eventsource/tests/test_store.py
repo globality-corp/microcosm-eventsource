@@ -8,6 +8,7 @@ from hamcrest import (
     assert_that,
     calling,
     contains,
+    contains_inanyorder,
     equal_to,
     is_,
     none,
@@ -72,8 +73,8 @@ class TestEventStore(object):
         """
         with transaction():
             task_event = TaskEvent(
-                task_id=self.task.id,
                 event_type=TaskEventType.CREATED,
+                task_id=self.task.id,
             )
             self.store.create(task_event)
 
@@ -93,8 +94,8 @@ class TestEventStore(object):
 
         """
         task_event = TaskEvent(
-            task_id=self.task.id,
             event_type=TaskEventType.STARTED,
+            task_id=self.task.id,
         )
         assert_that(
             calling(self.store.create).with_args(task_event),
@@ -108,15 +109,15 @@ class TestEventStore(object):
         """
         with transaction():
             task_event = TaskEvent(
-                task_id=self.task.id,
                 event_type=TaskEventType.CREATED,
                 state=(TaskEventType.CREATED, TaskEventType.ASSIGNED),
+                task_id=self.task.id,
             )
             self.store.create(task_event)
 
         assert_that(
-            sorted(task_event.state),
-            contains(TaskEventType.ASSIGNED, TaskEventType.CREATED),
+            task_event.state,
+            contains_inanyorder(TaskEventType.ASSIGNED, TaskEventType.CREATED),
         )
 
     def test_retrieve_most_recent(self):
@@ -126,15 +127,15 @@ class TestEventStore(object):
         """
         with transaction():
             created_event = TaskEvent(
-                task_id=self.task.id,
                 event_type=TaskEventType.CREATED,
+                task_id=self.task.id,
             )
             self.store.create(created_event)
             assigned_event = TaskEvent(
-                task_id=self.task.id,
-                event_type=TaskEventType.ASSIGNED,
                 assignee="Alice",
+                event_type=TaskEventType.ASSIGNED,
                 parent_id=created_event.id,
+                task_id=self.task.id,
             )
             self.store.create(assigned_event)
 
@@ -143,26 +144,34 @@ class TestEventStore(object):
             is_(equal_to(assigned_event)),
         )
 
-    def test_unique_event(self):
+    def test_unique_parent_id(self):
         """
-        Events are unique per container, parent, and version.
+        Events are unique per parent.
 
         """
         with transaction():
-            task_event = TaskEvent(
-                task_id=self.task.id,
+            created_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
+                task_id=self.task.id,
+            )
+            self.store.create(created_event)
+            task_event = TaskEvent(
+                event_type=TaskEventType.CREATED,
+                parent_id=created_event.id,
+                task_id=self.task.id,
             )
             self.store.create(task_event)
 
-        upserted = self.store.upsert_unique_event(
-            TaskEvent(
-                task_id=self.task.id,
-                event_type=TaskEventType.CREATED,
-            )
+        assert_that(
+            calling(self.store.create).with_args(
+                TaskEvent(
+                    event_type=TaskEventType.CREATED,
+                    parent_id=created_event.id,
+                    task_id=self.task.id,
+                ),
+            ),
+            raises(DuplicateModelError),
         )
-
-        assert_that(task_event.id, is_(equal_to(upserted.id)))
 
     def test_upsert_unique_event(self):
         """
@@ -170,16 +179,24 @@ class TestEventStore(object):
 
         """
         with transaction():
-            task_event = TaskEvent(
-                task_id=self.task.id,
+            created_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
+                task_id=self.task.id,
+            )
+            self.store.create(created_event)
+            task_event = TaskEvent(
+                event_type=TaskEventType.CREATED,
+                parent_id=created_event.id,
+                task_id=self.task.id,
             )
             self.store.create(task_event)
 
-        assert_that(
-            calling(self.store.create).with_args(TaskEvent(
-                task_id=self.task.id,
+        upserted = self.store.upsert_unique_event(
+            TaskEvent(
                 event_type=TaskEventType.CREATED,
-            )),
-            raises(DuplicateModelError),
+                parent_id=created_event.id,
+                task_id=self.task.id,
+            )
         )
+
+        assert_that(task_event.id, is_(equal_to(upserted.id)))
