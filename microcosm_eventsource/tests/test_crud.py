@@ -96,7 +96,7 @@ class TestTaskEventCRUDRoutes(object):
             assignee="Bob",
             event_type=TaskEventType.REASSIGNED,
             parent_id=started.id,
-            state=[TaskEventType.STARTED, TaskEventType.REASSIGNED],
+            state=[TaskEventType.STARTED],
             task_id=self.task.id,
         ).create()
         yield reassigned
@@ -227,7 +227,7 @@ class TestTaskEventCRUDRoutes(object):
 
         with SessionContext(self.graph), transaction():
             task_event = self.graph.task_event_store.retrieve(data["id"])
-            assert_that(task_event.state, is_(contains(TaskEventType.REASSIGNED, TaskEventType.STARTED)))
+            assert_that(task_event.state, is_(contains(TaskEventType.STARTED)))
 
     def test_transition_to_reassigned_again(self):
         with SessionContext(self.graph), transaction():
@@ -258,7 +258,7 @@ class TestTaskEventCRUDRoutes(object):
 
         with SessionContext(self.graph), transaction():
             task_event = self.graph.task_event_store.retrieve(data["id"])
-            assert_that(task_event.state, is_(contains(TaskEventType.REASSIGNED, TaskEventType.STARTED)))
+            assert_that(task_event.state, is_(contains(TaskEventType.STARTED)))
 
     def test_transition_to_revised(self):
         with SessionContext(self.graph), transaction():

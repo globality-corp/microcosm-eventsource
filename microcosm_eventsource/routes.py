@@ -12,8 +12,7 @@ def configure_event_crud(graph,
                          controller,
                          event_schema,
                          new_event_schema,
-                         search_event_schema,
-                         version="v1"):
+                         search_event_schema):
     mappings = {
         Operation.Create: EndpointDefinition(
             func=transactional(controller.create),
