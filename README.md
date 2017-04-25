@@ -115,12 +115,12 @@ Example:
         )
         REASSIGNED = event_info(
             follows=event("STARTED"),
-            accumulate=union(),
+            accumulate=keep(),
             requires=["assignee"],
         )
         RESCHEDULED = event_info(
             follows=event("STARTED"),
-            accumulate=union(),
+            accumulate=keep(),
             requires=["deadline"],
         )
         REVISED = event_info(

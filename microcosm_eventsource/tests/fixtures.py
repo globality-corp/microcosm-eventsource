@@ -14,9 +14,9 @@ from microcosm_postgres.models import Model, UnixTimestampEntityMixin
 from microcosm_postgres.store import Store
 from sqlalchemy import Column, DateTime, String
 
-from microcosm_eventsource.accumulation import alias, union
+from microcosm_eventsource.accumulation import alias, keep, union
 from microcosm_eventsource.controllers import EventController
-from microcosm_eventsource.transitioning import all_of, any_of, but_not, event
+from microcosm_eventsource.transitioning import all_of, any_of, but_not, event, nothing
 from microcosm_eventsource.event_types import event_info, EventType
 from microcosm_eventsource.models import EventMeta
 from microcosm_eventsource.resources import EventSchema, SearchEventSchema
@@ -25,7 +25,9 @@ from microcosm_eventsource.stores import EventStore
 
 
 class TaskEventType(EventType):
-    CREATED = event_info()
+    CREATED = event_info(
+        follows=nothing(),
+    )
     ASSIGNED = event_info(
         follows=all_of("CREATED", but_not("ASSIGNED")),
         accumulate=union(),
@@ -41,12 +43,12 @@ class TaskEventType(EventType):
     )
     REASSIGNED = event_info(
         follows=event("STARTED"),
-        accumulate=union(),
+        accumulate=keep(),
         requires=["assignee"],
     )
     RESCHEDULED = event_info(
         follows=event("STARTED"),
-        accumulate=union(),
+        accumulate=keep(),
         requires=["deadline"],
     )
     REVISED = event_info(
@@ -64,6 +66,8 @@ class TaskEventType(EventType):
 
 class Task(UnixTimestampEntityMixin, Model):
     __tablename__ = "task"
+
+    description = Column(String)
 
 
 @add_metaclass(EventMeta)

@@ -12,6 +12,14 @@ def current():
     return lambda state, event_type: [event_type]
 
 
+def keep():
+    """
+    Keep the current state.
+
+    """
+    return lambda state, event_type: state
+
+
 def alias(other_event_type):
     """
     Return another event type.

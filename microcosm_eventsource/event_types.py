@@ -53,7 +53,7 @@ class EventType(Enum):
     @property
     def is_initial(self):
         """
-        Can this event type be the initial event?
+        Can this event type be used for an initial event?
 
         """
         return not bool(self.value.follows)
@@ -97,10 +97,6 @@ class EventType(Enum):
         :param state: a set of event types
 
         """
-        if not state:
-            # only initial event types may come first
-            return self.is_initial
-
         return self.value.follows(self.__class__, state)
 
     def validate_transition(self, state):
