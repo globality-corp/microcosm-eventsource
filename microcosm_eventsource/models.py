@@ -139,26 +139,29 @@ class EventMeta(MetaClass):
             "container_id_name": container_id_name,
 
             # indexes and constraints
-            "__table_args__": table_args + cls.make_table_args(cls, container_id_name, event_type),
+            "__table_args__": table_args + cls.make_table_args(cls, table_name, container_id_name, event_type),
         }
 
-    def make_table_args(cls, container_id_name, event_type):
+    def make_table_args(cls, table_name, container_id_name, event_type):
         """
         Generate the event table's `__table_args__` value.
 
         """
         return cls.make_indexes(
             cls,
+            table_name,
             container_id_name,
         ) + cls.make_state_machine_constraints(
             cls,
+            table_name,
             event_type,
         ) + cls.make_column_constraints(
             cls,
+            table_name,
             event_type,
         )
 
-    def make_indexes(cls, container_id_name):
+    def make_indexes(cls, table_name, container_id_name):
         """
         Declare expected indexes.
 
@@ -166,7 +169,7 @@ class EventMeta(MetaClass):
         return (
             # logical clock is unique and indexed
             Index(
-                "unique_logical_clock",
+                "{}_unique_logical_clock".format(table_name),
                 container_id_name,
                 "clock",
                 unique=True,
@@ -176,7 +179,7 @@ class EventMeta(MetaClass):
             # be added by the user.
         )
 
-    def make_state_machine_constraints(cls, event_type):
+    def make_state_machine_constraints(cls, table_name, event_type):
         """
         Enforce that each state machine defines a proper linked list.
 
@@ -184,14 +187,14 @@ class EventMeta(MetaClass):
         return (
             # events must have a parent unless they are initial and its the first version
             CheckConstraint(
-                name="require_parent_id",
+                name="require_{}_parent_id".format(table_name),
                 sqltext="parent_id IS NOT NULL OR (version = 1 AND event_type IN ({}))".format(
                     join_event_types(item for item in event_type if item.is_initial),
                 ),
             ),
         )
 
-    def make_column_constraints(cls, event_type):
+    def make_column_constraints(cls, table_name, event_type):
         """
         Event tables are polymorphic and cannot enforce column-level nullability.
 
@@ -200,7 +203,7 @@ class EventMeta(MetaClass):
         """
         return tuple(
             CheckConstraint(
-                name="require_{}".format(column_name),
+                name="require_{}_{}".format(table_name, column_name),
                 sqltext="{} IS NOT NULL OR event_type NOT IN ({})".format(
                     column_name,
                     join_event_types(item for item in event_type.requires(column_name))
