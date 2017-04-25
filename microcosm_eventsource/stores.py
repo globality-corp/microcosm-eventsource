@@ -90,7 +90,7 @@ class EventStore(Store):
         if version is not None:
             query = query.filter(self.model_class.version == version)
 
-        return super(self.model_classStore, self)._filter(query, **kwargs)
+        return super(EventStore, self)._filter(query, **kwargs)
 
     def _order_by(self, query, **kwargs):
         """
