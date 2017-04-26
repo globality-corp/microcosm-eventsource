@@ -25,9 +25,20 @@ class EventController(CRUDStoreAdapter):
         """
         self.validate_required_fields(event_type, **kwargs)
         parent = self.store.retrieve_most_recent(**kwargs)
+        return self.create_transition(parent, event_type, **kwargs)
+
+    def create_transition(self, parent, event_type, **kwargs):
+        """
+        Process an event state transition.
+
+        This function allows chaining of state transitions by feeding the output
+        of `create_event` with another event type.
+
+        :raises: IllegalStateTransitionError
+
+        """
         version, state = self.process_state_transition(parent, event_type)
         event = self.create_event(parent, event_type, version, state, **kwargs)
-        self.publish_event(event)
         return event
 
     def validate_required_fields(self, event_type, **kwargs):
@@ -88,7 +99,7 @@ class EventController(CRUDStoreAdapter):
             parent_id = parent.id
             create_func = self.store.upsert_on_parent_id
 
-        return create_func(
+        new_event = create_func(
             self.store.model_class(
                 event_type=event_type,
                 parent_id=parent_id,
@@ -97,6 +108,8 @@ class EventController(CRUDStoreAdapter):
                 **kwargs
             ),
         )
+        self.publish_event(new_event)
+        return new_event
 
     def publish_event(self, new_event):
         """
