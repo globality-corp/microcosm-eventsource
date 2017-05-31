@@ -17,12 +17,25 @@ class EventInfo(object):
     Encapsulate information needed to create an event.
 
     """
-    def __init__(self, event_type):
+    def __init__(self, ns, sns_producer, event_type, parent=None):
+        self.ns = ns
+        self.sns_producer = sns_producer
         self.event_type = event_type
-        self.parent = None
+        self.parent = parent
         self.version = None
         self.state = None
         self.event = None
+
+    def publish_event(self, media_type, **kwargs):
+        """
+        Publish that an event occurred so that other services can react.
+
+        """
+        uri = self.ns.url_for(Operation.Retrieve, **kwargs)
+        self.sns_producer.produce(
+            media_type=media_type,
+            uri=uri,
+        )
 
 
 class EventFactory(object):
@@ -30,17 +43,17 @@ class EventFactory(object):
     Base class for creating an event.
 
     """
-    def __init__(self, ns, sns_producer, identifier_key, event_store):
-        self.ns = ns
-        self.sns_producer = sns_producer
-        self.identifier_key = identifier_key
+    def __init__(self, event_store, default_ns=None, identifier_key=None):
         self.event_store = event_store
+        self.default_ns = default_ns
+        self.identifier_key = identifier_key
 
-    def create(self, event_info, **kwargs):
+    def create(self, ns, sns_producer, event_type, **kwargs):
         """
         Create an event, validating the underlying state machine.
 
         """
+        event_info = EventInfo(ns or self.default_ns, sns_producer, event_type)
         self.validate_required_fields(event_info, **kwargs)
         event_info.parent = self.event_store.retrieve_most_recent(**kwargs)
         self.create_transition(event_info, **kwargs)
@@ -126,21 +139,18 @@ class EventFactory(object):
                 **kwargs
             ),
         )
-        self.publish_created(event_info)
+        event_info.publish_event(
+            media_type=self.make_media_type(event_info),
+            **self.make_uri_kwargs(event_info)
+        )
 
-    def publish_created(self, event_info):
-        """
-        Publish that an event occurred so that other services can react.
+    def make_media_type(self, event_info):
+        return created("{}.{}".format(
+            name_for(self.event_store.model_class),
+            event_info.event.event_type.name,
+        ))
 
-        """
+    def make_uri_kwargs(self, event_info):
         uri_kwargs = dict(_external=True)
         uri_kwargs[self.identifier_key] = event_info.event.id
-        uri = self.ns.url_for(Operation.Retrieve, **uri_kwargs)
-
-        self.sns_producer.produce(
-            media_type=created("{}.{}".format(
-                name_for(self.event_store.model_class),
-                event_info.event.event_type.name,
-            )),
-            uri=uri,
-        )
+        return uri_kwargs
