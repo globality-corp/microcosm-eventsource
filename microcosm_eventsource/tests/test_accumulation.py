@@ -25,6 +25,17 @@ def test_alias():
     )
 
 
+def test_alias_as_string():
+    state = {
+        TaskEventType.STARTED,
+    }
+
+    assert_that(
+        alias("CREATED")(state, TaskEventType.REVISED),
+        contains(TaskEventType.CREATED),
+    )
+
+
 def test_current():
     state = {
         TaskEventType.ASSIGNED,
@@ -55,6 +66,18 @@ def test_difference():
 
     assert_that(
         difference(TaskEventType.ASSIGNED)(state, TaskEventType.CANCELED),
+        contains(TaskEventType.CREATED),
+    )
+
+
+def test_difference_as_string():
+    state = {
+        TaskEventType.CREATED,
+        TaskEventType.ASSIGNED,
+    }
+
+    assert_that(
+        difference("ASSIGNED")(state, TaskEventType.CANCELED),
         contains(TaskEventType.CREATED),
     )
 
