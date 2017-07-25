@@ -123,26 +123,28 @@ class EventFactory(object):
         that produce the *same* event.
 
         """
-        if event_info.parent is None:
-            parent_id = None
-            create_func = self.event_store.create
-        else:
-            parent_id = event_info.parent.id
-            create_func = self.event_store.upsert_on_parent_id
+        parent_id = None if event_info.parent is None else event_info.parent.id
 
-        event_info.event = create_func(
-            self.event_store.model_class(
-                event_type=event_info.event_type,
-                parent_id=parent_id,
-                state=event_info.state,
-                version=event_info.version,
-                **kwargs
-            ),
+        instance = self.event_store.model_class(
+            event_type=event_info.event_type,
+            parent_id=parent_id,
+            state=event_info.state,
+            version=event_info.version,
+            **kwargs
         )
+
+        event_info.event = self.create_instance(event_info, instance)
+
         event_info.publish_event(
             media_type=self.make_media_type(event_info),
             **self.make_uri_kwargs(event_info)
         )
+
+    def create_instance(self, event_info, instance):
+        if event_info.parent is None:
+            return self.event_store.create(instance)
+        else:
+            return self.event_store.upsert_on_parent_id(instance)
 
     def make_media_type(self, event_info):
         return created("{}.{}".format(
