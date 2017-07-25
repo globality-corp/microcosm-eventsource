@@ -28,6 +28,14 @@ def alias(other_event_type):
     return lambda state, event_type: [other_event_type]
 
 
+def difference(other_event_type):
+    """
+    Remove one event type
+
+    """
+    return lambda state, event_type: sorted(state - {other_event_type, })
+
+
 def union():
     """
     Return the aggregated event type.
