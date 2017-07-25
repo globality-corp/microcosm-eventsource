@@ -5,7 +5,9 @@ Test accumulation.
 from hamcrest import assert_that, contains
 
 from microcosm_eventsource.accumulation import (
+    addition,
     alias,
+    compose,
     current,
     keep,
     difference,
@@ -58,6 +60,28 @@ def test_keep():
     )
 
 
+def test_addition():
+    state = {
+        TaskEventType.CREATED,
+    }
+
+    assert_that(
+        addition(TaskEventType.ASSIGNED)(state, TaskEventType.ASSIGNED),
+        contains(TaskEventType.ASSIGNED, TaskEventType.CREATED),
+    )
+
+
+def test_addition_as_string():
+    state = {
+        TaskEventType.CREATED,
+    }
+
+    assert_that(
+        addition("ASSIGNED")(state, TaskEventType.ASSIGNED),
+        contains(TaskEventType.ASSIGNED, TaskEventType.CREATED),
+    )
+
+
 def test_difference():
     state = {
         TaskEventType.CREATED,
@@ -90,4 +114,19 @@ def test_union():
     assert_that(
         union()(state, TaskEventType.ASSIGNED),
         contains(TaskEventType.ASSIGNED, TaskEventType.CREATED),
+    )
+
+
+def test_compose():
+    state = {
+        TaskEventType.STARTED,
+        TaskEventType.REASSIGNED,
+    }
+
+    assert_that(
+        compose(
+            difference("STARTED"),
+            addition("COMPLETED"),
+        )(state, TaskEventType.COMPLETED),
+        contains(TaskEventType.COMPLETED, TaskEventType.REASSIGNED),
     )
