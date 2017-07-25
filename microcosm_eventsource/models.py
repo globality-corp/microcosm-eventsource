@@ -81,6 +81,9 @@ class EventMeta(MetaClass):
          -  `__tablename__` the usual SQLAlchemy table name
 
         """
+        if any(type(base) is EventMeta for base in bases):
+            return super(EventMeta, cls).__new__(cls, name, bases, dct)
+
         # add model to expected bases
         bases = bases + (BaseEvent, Model,)
 
