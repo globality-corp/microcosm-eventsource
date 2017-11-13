@@ -80,6 +80,12 @@ class EventMeta(MetaClass):
          -  `__eventtype__` a reference to the event type enumeration
          -  `__tablename__` the usual SQLAlchemy table name
 
+         Can optionally include the following declarations:
+
+         -  `__unique_parent__` a flag indicating whether or not a unique parent constraint is created
+         May be set to False in cases like having a unique parent for each version of the event
+         If the flag is set to False, a similar unique constraint should be set on the event class
+
         """
         if any(type(base) is EventMeta for base in bases):
             return super(EventMeta, cls).__new__(cls, name, bases, dct)
