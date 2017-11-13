@@ -80,6 +80,12 @@ class EventMeta(MetaClass):
          -  `__eventtype__` a reference to the event type enumeration
          -  `__tablename__` the usual SQLAlchemy table name
 
+         Can optionally include the following declarations:
+
+         -  `__unique_parent__` a flag indicating whether or not a unique parent constraint is created
+         May be set to False in cases like having a unique parent for each version of the event
+         If the flag is set to False, a similar unique constraint should be set on the event class
+
         """
         if any(type(base) is EventMeta for base in bases):
             return super(EventMeta, cls).__new__(cls, name, bases, dct)
@@ -94,11 +100,12 @@ class EventMeta(MetaClass):
             event_type=dct["__eventtype__"],
             table_name=dct["__tablename__"],
             table_args=dct.get("__table_args__", ()),
+            unique_parent=dct.get("__unique_parent__", True)
         ))
 
         return super(EventMeta, cls).__new__(cls, name, bases, dct)
 
-    def make_declarations(cls, container_name, event_type, table_name, table_args):
+    def make_declarations(cls, container_name, event_type, table_name, table_args, unique_parent):
         """
         Declare columns and indexes.
 
@@ -133,7 +140,7 @@ class EventMeta(MetaClass):
             container_id_name: Column(UUIDType, ForeignKey(container_id), nullable=False),
             "event_type": Column(EnumType(event_type), nullable=False),
             "clock": Column(Serial, server_default=FetchedValue(), nullable=False, unique=True),
-            "parent_id": Column(UUIDType, ForeignKey(parent_id), nullable=True, unique=True),
+            "parent_id": Column(UUIDType, ForeignKey(parent_id), nullable=True, unique=unique_parent),
             "state": Column(ARRAY(EnumType(event_type)), nullable=False, default=default_state),
             "version": Column(Integer, default=1, nullable=False),
 
