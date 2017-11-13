@@ -134,3 +134,43 @@ def configure_task_crud(graph):
         new_event_schema=NewTaskEventSchema(),
         search_event_schema=SearchTaskEventSchema(),
     )
+
+
+class ActivityEventType(EventType):
+    CREATED = event_info(
+        follows=nothing(),
+    )
+    CANCELED = event_info(
+        follows=event("CREATED"),
+    )
+
+
+class Activity(UnixTimestampEntityMixin, Model):
+    __tablename__ = "activity"
+
+    description = Column(String)
+
+
+@add_metaclass(EventMeta)
+class ActivityEvent(UnixTimestampEntityMixin):
+    __tablename__ = "activity_event"
+    __eventtype__ = ActivityEventType
+    __container__ = Activity
+    # Supports multiple children per parent
+    __unique_parent__ = False
+
+    assignee = Column(String)
+
+
+@binding("activity_store")
+class ActivityStore(Store):
+
+    def __init__(self, graph):
+        super(ActivityStore, self).__init__(graph, Activity)
+
+
+@binding("activity_event_store")
+class ActivityEventStore(EventStore):
+
+    def __init__(self, graph):
+        super(ActivityEventStore, self).__init__(graph, ActivityEvent)

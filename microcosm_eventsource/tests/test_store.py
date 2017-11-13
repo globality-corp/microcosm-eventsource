@@ -24,6 +24,9 @@ from microcosm_eventsource.tests.fixtures import (
     Task,
     TaskEvent,
     TaskEventType,
+    Activity,
+    ActivityEvent,
+    ActivityEventType,
 )
 
 
@@ -38,6 +41,8 @@ class TestEventStore(object):
         self.graph.use(
             "task_store",
             "task_event_store",
+            "activity_store",
+            "activity_event_store",
         )
         self.store = self.graph.task_event_store
 
@@ -228,3 +233,30 @@ class TestEventStore(object):
             )),
             raises(ConcurrentStateConflictError),
         )
+
+    def test_multiple_children_per_parent(self):
+        """
+        Events are not unique per parent for False unique_parent events.
+
+        """
+        with transaction():
+            self.activity = Activity().create()
+            created_event = ActivityEvent(
+                event_type=ActivityEventType.CREATED,
+                activity_id=self.activity.id,
+            )
+            self.store.create(created_event)
+            task_event = ActivityEvent(
+                event_type=ActivityEventType.CANCELED,
+                parent_id=created_event.id,
+                activity_id=self.activity.id,
+            )
+            self.store.create(task_event)
+            same_parent_task_event = ActivityEvent(
+                event_type=ActivityEventType.CANCELED,
+                parent_id=created_event.id,
+                activity_id=self.activity.id,
+            )
+            self.store.create(same_parent_task_event)
+
+        assert_that(same_parent_task_event.parent_id, is_(created_event.id))
