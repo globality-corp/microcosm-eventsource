@@ -55,6 +55,7 @@ class EventFactory(object):
         """
         event_info = EventInfo(ns or self.default_ns, sns_producer, event_type, parent, version)
         self.validate_required_fields(event_info, **kwargs)
+        self.validate_transition(event_info, **kwargs)
         if not event_info.parent:
             event_info.parent = self.event_store.retrieve_most_recent(**kwargs)
         self.create_transition(event_info, **kwargs)
@@ -71,7 +72,6 @@ class EventFactory(object):
 
         """
         self.process_state_transition(event_info)
-        self.validate_additional(event_info, **kwargs)
         self.create_event(event_info, **kwargs)
 
     def validate_required_fields(self, event_info, **kwargs):
@@ -103,11 +103,11 @@ class EventFactory(object):
                 ],
             )
 
-    def validate_additional(self, event_info, **kwargs):
+    def validate_transition(self, event_info, **kwargs):
         """
         Allows implementations of event source to define custom validation.
 
-        """        
+        """
         pass
 
     def process_state_transition(self, event_info):
@@ -121,9 +121,10 @@ class EventFactory(object):
         state = set(event_info.parent.state) if event_info.parent else set()
         event_info.event_type.validate_transition(state)
         event_info.state = event_info.event_type.accumulate_state(state)
-        if not event_info.version:
-            parent_version = event_info.parent.version if event_info.parent else None
-            event_info.version = event_info.event_type.next_version(parent_version)
+        if event_info.version is not None:
+            return
+        parent_version = event_info.parent.version if event_info.parent else None
+        event_info.version = event_info.event_type.next_version(parent_version)
 
     def create_event(self, event_info, **kwargs):
         """

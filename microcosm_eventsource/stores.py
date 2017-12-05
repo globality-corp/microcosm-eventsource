@@ -63,8 +63,10 @@ class EventStore(Store):
             self.session.execute(upsert_statement)
 
         most_recent = self._retrieve_most_recent(
-            *[getattr(self.model_class, elem) == getattr(instance, elem)
-            for elem in self.upsert_index_elements()]
+            *[
+                getattr(self.model_class, elem) == getattr(instance, elem)
+                for elem in self.upsert_index_elements()
+            ]
         )
 
         if not most_recent.is_similar_to(instance):
