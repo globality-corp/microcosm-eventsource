@@ -34,14 +34,23 @@ class EventStore(Store):
             self.model_class.event_type == event_type,
         )
 
-    def upsert_on_parent_id(self, instance):
+    def upsert_index_elements(self):
         """
-        Upsert an event by parent id.
+        Can be overriden by implementations of event source to upsert based on other index elements
+
+        Requires a unique constraint to exist on the index elements
+
+        """
+        return ["parent_id"]
+
+    def upsert_on_index_elements(self, instance):
+        """
+        Upsert an event by index elements.
 
         Uses ON CONFLICT ... DO NOTHING to handle uniqueness constraint violations without
         invalidating the current transactions completely.
 
-        Depends on the parent_id unique constraint to find the resulting entry.
+        Depends on an unique constraint on index elements to find the resulting entry.
 
         """
         with self.flushing():
@@ -49,13 +58,15 @@ class EventStore(Store):
                 instance._members(),
             )
             upsert_statement = insert_statement.on_conflict_do_nothing(
-                index_elements=["parent_id"],
+                index_elements=self.upsert_index_elements(),
             )
             self.session.execute(upsert_statement)
 
         most_recent = self._retrieve_most_recent(
-            self.model_class.parent_id == instance.parent_id,
+            *[getattr(self.model_class, elem) == getattr(instance, elem)
+            for elem in self.upsert_index_elements()]
         )
+
         if not most_recent.is_similar_to(instance):
             raise ConcurrentStateConflictError()
 
