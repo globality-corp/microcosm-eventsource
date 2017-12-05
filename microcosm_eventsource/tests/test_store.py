@@ -179,9 +179,9 @@ class TestEventStore(object):
             raises(DuplicateModelError),
         )
 
-    def test_upsert_on_parent_id(self):
+    def test_upsert_on_index_elements(self):
         """
-        Events with a duplicate parent id can be upserted.
+        Events with a duplicate index elements can be upserted.
 
         """
         with transaction():
@@ -197,7 +197,7 @@ class TestEventStore(object):
             )
             self.store.create(task_event)
 
-        upserted = self.store.upsert_on_parent_id(
+        upserted = self.store.upsert_on_index_elements(
             TaskEvent(
                 event_type=TaskEventType.CREATED,
                 parent_id=created_event.id,
@@ -207,9 +207,9 @@ class TestEventStore(object):
 
         assert_that(task_event.id, is_(equal_to(upserted.id)))
 
-    def test_upsert_on_parent_id_mismatch(self):
+    def test_upsert_on_index_elements_mismatch(self):
         """
-        Events with a duplicate parent id cannot be upsert if they don't match.
+        Events with a duplicate index elements cannot be upsert if they don't match.
 
         """
         with transaction():
@@ -226,7 +226,7 @@ class TestEventStore(object):
             self.store.create(task_event)
 
         assert_that(
-            calling(self.store.upsert_on_parent_id).with_args(TaskEvent(
+            calling(self.store.upsert_on_index_elements).with_args(TaskEvent(
                 event_type=TaskEventType.REVISED,
                 parent_id=created_event.id,
                 task_id=self.task.id,
