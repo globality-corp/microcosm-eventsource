@@ -17,12 +17,12 @@ class EventInfo(object):
     Encapsulate information needed to create an event.
 
     """
-    def __init__(self, ns, sns_producer, event_type, parent=None):
+    def __init__(self, ns, sns_producer, event_type, parent=None, version=None):
         self.ns = ns
         self.sns_producer = sns_producer
         self.event_type = event_type
         self.parent = parent
-        self.version = None
+        self.version = version
         self.state = None
         self.event = None
 
@@ -48,14 +48,16 @@ class EventFactory(object):
         self.default_ns = default_ns
         self.identifier_key = identifier_key
 
-    def create(self, ns, sns_producer, event_type, **kwargs):
+    def create(self, ns, sns_producer, event_type, parent=None, version=None, **kwargs):
         """
         Create an event, validating the underlying state machine.
 
         """
-        event_info = EventInfo(ns or self.default_ns, sns_producer, event_type)
+        event_info = EventInfo(ns or self.default_ns, sns_producer, event_type, parent, version)
         self.validate_required_fields(event_info, **kwargs)
-        event_info.parent = self.event_store.retrieve_most_recent(**kwargs)
+        self.validate_transition(event_info, **kwargs)
+        if not event_info.parent:
+            event_info.parent = self.event_store.retrieve_most_recent(**kwargs)
         self.create_transition(event_info, **kwargs)
         return event_info.event
 
@@ -101,6 +103,13 @@ class EventFactory(object):
                 ],
             )
 
+    def validate_transition(self, event_info, **kwargs):
+        """
+        Allows implementations of event source to define custom validation.
+
+        """
+        pass
+
     def process_state_transition(self, event_info):
         """
         Process a state transition.
@@ -112,6 +121,8 @@ class EventFactory(object):
         state = set(event_info.parent.state) if event_info.parent else set()
         event_info.event_type.validate_transition(state)
         event_info.state = event_info.event_type.accumulate_state(state)
+        if event_info.version is not None:
+            return
         parent_version = event_info.parent.version if event_info.parent else None
         event_info.version = event_info.event_type.next_version(parent_version)
 
@@ -144,7 +155,7 @@ class EventFactory(object):
         if event_info.parent is None:
             return self.event_store.create(instance)
         else:
-            return self.event_store.upsert_on_parent_id(instance)
+            return self.event_store.upsert_on_index_elements(instance)
 
     def make_media_type(self, event_info):
         return created("{}.{}".format(
