@@ -54,6 +54,7 @@ class EventStore(Store):
 
         """
         with self.flushing():
+            instance.id = self.new_object_id()
             insert_statement = insert(self.model_class).values(
                 instance._members(),
             )
