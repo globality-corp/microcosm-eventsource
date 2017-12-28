@@ -17,8 +17,10 @@ from hamcrest import (
 )
 from microcosm.api import create_object_graph
 from microcosm.loaders import load_from_dict
+from microcosm_postgres.identifiers import new_object_id
 from microcosm_postgres.operations import recreate_all
 from microcosm_postgres.context import SessionContext, transaction
+from mock import patch
 
 from microcosm_eventsource.tests.fixtures import (
     Task,
@@ -102,16 +104,21 @@ class TestTaskEventCRUDRoutes(object):
         yield reassigned
 
     def test_created_event(self):
-        response = self.client.post(
-            "/api/v1/task_event",
-            data=dumps(dict(
-                taskId=str(self.task.id),
-                eventType=TaskEventType.CREATED.name,
-            )),
-        )
+        created_event_id = new_object_id()
+        with patch.object(self.graph.task_event_store, "new_object_id") as mocked:
+            mocked.return_value = created_event_id
+            response = self.client.post(
+                "/api/v1/task_event",
+                data=dumps(dict(
+                    taskId=str(self.task.id),
+                    eventType=TaskEventType.CREATED.name,
+                    parentId=str(self.task.id),
+                )),
+            )
         assert_that(response.status_code, is_(equal_to(201)))
 
         data = loads(response.data.decode("utf-8"))
+        assert_that(data, has_entry("id", str(created_event_id)))
         assert_that(data, has_entry("taskId", str(self.task.id)))
         assert_that(data, has_entry("clock", 1))
         assert_that(data, has_entry("parentId", none()))
@@ -130,17 +137,21 @@ class TestTaskEventCRUDRoutes(object):
             created_event = list(islice(self.iter_events(), 1))[-1]
             assert_that(created_event.event_type, is_(equal_to(TaskEventType.CREATED)))
 
-        response = self.client.post(
-            "/api/v1/task_event",
-            data=dumps(dict(
-                assignee="Alice",
-                taskId=str(self.task.id),
-                eventType=TaskEventType.ASSIGNED.name,
-            )),
-        )
+        assigned_event_id = new_object_id()
+        with patch.object(self.graph.task_event_store, "new_object_id") as mocked:
+            mocked.return_value = assigned_event_id
+            response = self.client.post(
+                "/api/v1/task_event",
+                data=dumps(dict(
+                    assignee="Alice",
+                    taskId=str(self.task.id),
+                    eventType=TaskEventType.ASSIGNED.name,
+                )),
+            )
         assert_that(response.status_code, is_(equal_to(201)))
 
         data = loads(response.data.decode("utf-8"))
+        assert_that(data, has_entry("id", str(assigned_event_id)))
         assert_that(data, has_entry("taskId", str(self.task.id)))
         assert_that(data, has_entry("clock", 2))
         assert_that(data, has_entry("parentId", str(created_event.id)))
