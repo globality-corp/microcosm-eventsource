@@ -14,7 +14,7 @@ def normalize(value):
     return event(value)
 
 
-class Nothing(object):
+class Nothing:
 
     def __call__(self, cls, state):
         return not(state)
@@ -25,7 +25,7 @@ class Nothing(object):
     __nonzero__ = __bool__
 
 
-class AllOf(object):
+class AllOf:
 
     def __init__(self, *args):
         self.args = args
@@ -39,7 +39,7 @@ class AllOf(object):
     __nonzero__ = __bool__
 
 
-class AnyOf(object):
+class AnyOf:
 
     def __init__(self, *args):
         self.args = args
@@ -53,7 +53,7 @@ class AnyOf(object):
     __nonzero__ = __bool__
 
 
-class ButNot(object):
+class ButNot:
 
     def __init__(self, arg):
         self.arg = arg
@@ -67,7 +67,7 @@ class ButNot(object):
     __nonzero__ = __bool__
 
 
-class Event(object):
+class Event:
 
     def __init__(self, name):
         self.name = name

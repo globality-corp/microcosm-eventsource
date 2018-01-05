@@ -29,7 +29,7 @@ from microcosm_eventsource.tests.fixtures import (
 )
 
 
-class TestTaskEventCRUDRoutes(object):
+class TestTaskEventCRUDRoutes:
     def setup(self):
         loader = load_from_dict(
             sns_producer=dict(

@@ -12,7 +12,7 @@ from microcosm_pubsub.conventions import created
 from werkzeug.exceptions import UnprocessableEntity
 
 
-class EventInfo(object):
+class EventInfo:
     """
     Encapsulate information needed to create an event.
 
@@ -38,7 +38,7 @@ class EventInfo(object):
         )
 
 
-class EventFactory(object):
+class EventFactory:
     """
     Base class for creating an event.
 
