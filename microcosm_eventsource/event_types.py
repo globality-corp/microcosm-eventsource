@@ -27,7 +27,7 @@ from microcosm_eventsource.accumulation import current
 from microcosm_eventsource.transitioning import nothing
 
 
-class EventTypeInfo(object):
+class EventTypeInfo:
     """
     Event type meta data.
 

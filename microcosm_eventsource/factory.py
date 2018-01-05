@@ -12,7 +12,7 @@ from microcosm_pubsub.conventions import created
 from werkzeug.exceptions import UnprocessableEntity
 
 
-class EventInfo(object):
+class EventInfo:
     """
     Encapsulate information needed to create an event.
 
@@ -38,7 +38,7 @@ class EventInfo(object):
         )
 
 
-class EventFactory(object):
+class EventFactory:
     """
     Base class for creating an event.
 
@@ -96,7 +96,7 @@ class EventFactory(object):
                             "Event type '{}' requires '{}'".format(
                                 event_info.event_type.name,
                                 camelize(required_field, uppercase_first_letter=False),
-                            )
+                            ),
                         ],
                     }
                     for required_field in missing_required_fields
@@ -136,7 +136,9 @@ class EventFactory(object):
         """
         parent_id = None if event_info.parent is None else event_info.parent.id
 
+        # NB: setting the id here so that it can easily be mocked in tests
         instance = self.event_store.model_class(
+            id=self.event_store.new_object_id(),
             event_type=event_info.event_type,
             parent_id=parent_id,
             state=event_info.state,

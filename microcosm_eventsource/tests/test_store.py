@@ -30,7 +30,7 @@ from microcosm_eventsource.tests.fixtures import (
 )
 
 
-class TestEventStore(object):
+class TestEventStore:
 
     def setup(self):
         self.graph = create_object_graph(

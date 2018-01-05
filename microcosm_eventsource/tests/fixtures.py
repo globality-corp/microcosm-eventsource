@@ -2,8 +2,6 @@
 Test fixtures.
 
 """
-from six import add_metaclass
-
 from marshmallow import fields, Schema
 from microcosm.api import binding
 from microcosm_flask.fields import EnumField
@@ -70,8 +68,7 @@ class Task(UnixTimestampEntityMixin, Model):
     description = Column(String)
 
 
-@add_metaclass(EventMeta)
-class TaskEvent(UnixTimestampEntityMixin):
+class TaskEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
     __tablename__ = "task_event"
     __eventtype__ = TaskEventType
     __container__ = Task
@@ -151,8 +148,7 @@ class Activity(UnixTimestampEntityMixin, Model):
     description = Column(String)
 
 
-@add_metaclass(EventMeta)
-class ActivityEvent(UnixTimestampEntityMixin):
+class ActivityEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
     __tablename__ = "activity_event"
     __eventtype__ = ActivityEventType
     __container__ = Activity

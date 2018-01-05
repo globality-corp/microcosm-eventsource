@@ -20,7 +20,7 @@ from sqlalchemy_utils import UUIDType
 MetaClass = type(Model)
 
 
-class ColumnAlias(object):
+class ColumnAlias:
     """
     Descriptor to reference a column by a well known alias.
 
@@ -46,7 +46,7 @@ def join_event_types(event_types):
     )
 
 
-class BaseEvent(object):
+class BaseEvent:
 
     def is_similar_to(self, other):
         """
