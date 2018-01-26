@@ -14,6 +14,7 @@ class EventSchema(Schema):
     createdTimestamp = fields.Float(
         attribute="created_timestamp",
         required=True,
+        allow_none=True,
     )
     id = fields.UUID(
         required=True,
@@ -24,10 +25,12 @@ class EventSchema(Schema):
     parentId = fields.UUID(
         attribute="parent_id",
         required=False,
+        allow_none=True,
     )
     updatedTimestamp = fields.Float(
         attribute="created_timestamp",
         required=True,
+        allow_none=True,
     )
 
 
