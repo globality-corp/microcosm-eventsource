@@ -8,9 +8,7 @@ from microcosm_flask.paging import PageSchema
 
 
 class EventSchema(Schema):
-    clock = fields.Integer(
-        required=True,
-    )
+    clock = fields.Integer()
     createdTimestamp = fields.Float(
         attribute="created_timestamp",
         required=True,
@@ -39,4 +37,5 @@ class SearchEventSchema(PageSchema):
     min_clock = fields.Integer()
     max_clock = fields.Integer()
     parent_id = fields.UUID()
+    sort_by_clock = fields.Boolean()
     version = fields.Integer()
