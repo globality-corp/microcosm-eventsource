@@ -2,6 +2,8 @@
 Test fixtures.
 
 """
+from enum import Enum
+
 from marshmallow import fields, Schema
 from microcosm.api import binding
 from microcosm_flask.fields import EnumField
@@ -15,14 +17,14 @@ from sqlalchemy import Column, DateTime, String
 from microcosm_eventsource.accumulation import alias, keep, union
 from microcosm_eventsource.controllers import EventController
 from microcosm_eventsource.transitioning import all_of, any_of, but_not, event, nothing
-from microcosm_eventsource.event_types import event_info, EventType
+from microcosm_eventsource.event_types import event_info, EventType, EventTypeUnion
 from microcosm_eventsource.models import EventMeta
 from microcosm_eventsource.resources import EventSchema, SearchEventSchema
 from microcosm_eventsource.routes import configure_event_crud
 from microcosm_eventsource.stores import EventStore
 
 
-class TaskEventType(EventType):
+class BasicTaskEventType(EventType):
     CREATED = event_info(
         follows=nothing(),
     )
@@ -39,6 +41,15 @@ class TaskEventType(EventType):
     STARTED = event_info(
         follows=all_of("ASSIGNED", "SCHEDULED"),
     )
+    CANCELED = event_info(
+        follows=event("STARTED"),
+    )
+    COMPLETED = event_info(
+        follows=event("STARTED"),
+    )
+
+
+class AdvancedTaskEventType(Enum):
     REASSIGNED = event_info(
         follows=event("STARTED"),
         accumulate=keep(),
@@ -54,12 +65,9 @@ class TaskEventType(EventType):
         accumulate=alias("CREATED"),
         restarting=True,
     )
-    CANCELED = event_info(
-        follows=event("STARTED"),
-    )
-    COMPLETED = event_info(
-        follows=event("STARTED"),
-    )
+
+
+TaskEventType = EventTypeUnion("TaskEventType", BasicTaskEventType, AdvancedTaskEventType)
 
 
 class Task(UnixTimestampEntityMixin, Model):
