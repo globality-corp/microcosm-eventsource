@@ -18,6 +18,7 @@ this accumulated `state` and the current event:
 
 """
 from enum import Enum
+from itertools import chain
 
 from microcosm_eventsource.errors import (
     IllegalInitialStateError,
@@ -148,3 +149,11 @@ class EventType(Enum):
 
 def event_info(*args, **kwargs):
     return EventTypeInfo(*args, **kwargs)
+
+
+def EventTypeUnion(name, *event_types):
+    """
+    Create a new `EventType` as a union of other enums.
+
+    """
+    return EventType(name, [(item.name, item.value) for item in chain(*event_types)])
