@@ -8,7 +8,7 @@ from microcosm_flask.paging import PageSchema
 
 
 class EventSchema(Schema):
-    clock = fields.Integer()
+    clock = fields.Integer(allow_none=True)
     createdTimestamp = fields.Float(
         attribute="created_timestamp",
         required=True,
