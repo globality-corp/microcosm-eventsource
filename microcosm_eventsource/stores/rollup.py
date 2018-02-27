@@ -11,7 +11,7 @@ from microcosm_postgres.context import SessionContext
 from microcosm_postgres.errors import ModelNotFoundError
 
 
-class RolledUpEventStore:
+class RollUpStore:
 
     def __init__(self, container_store, event_store, rollup=RollUp):
         self.container_store = container_store

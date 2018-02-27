@@ -20,7 +20,7 @@ from microcosm_postgres.context import SessionContext, transaction
 from microcosm_postgres.errors import ModelNotFoundError
 from microcosm_postgres.identifiers import new_object_id
 
-from microcosm_eventsource.stores import RolledUpEventStore
+from microcosm_eventsource.stores import RollUpStore
 from microcosm_eventsource.tests.fixtures import (
     Task,
     TaskEvent,
@@ -42,7 +42,7 @@ class TestRolledUpEventStore:
             "activity_store",
             "activity_event_store",
         )
-        self.store = RolledUpEventStore(
+        self.store = RollUpStore(
             self.graph.task_store,
             self.graph.task_event_store,
         )
