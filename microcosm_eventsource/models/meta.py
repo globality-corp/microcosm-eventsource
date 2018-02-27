@@ -1,5 +1,5 @@
 """
-Event model.
+Metaclass for new event types.
 
 """
 from microcosm_postgres.models import Model
@@ -15,24 +15,12 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy_utils import UUIDType
 
+from microcosm_eventsource.models.alias import ColumnAlias
+from microcosm_eventsource.models.base import BaseEvent
+
 
 # preserve the SQLAlchemy metaclass
 MetaClass = type(Model)
-
-
-class ColumnAlias:
-    """
-    Descriptor to reference a column by a well known alias.
-
-    """
-    def __init__(self, name):
-        self.name = name
-
-    def __get__(self, cls, owner):
-        return getattr(cls or owner, self.name)
-
-    def __set__(self, cls, value):
-        return setattr(cls, self.name, value)
 
 
 def default_state(context):
@@ -44,20 +32,6 @@ def join_event_types(event_types):
         "'{}'".format(event_type.name)
         for event_type in event_types
     )
-
-
-class BaseEvent:
-
-    def is_similar_to(self, other):
-        """
-        Are two events similar enough to activate upserting?
-
-        """
-        return all((
-            self.event_type == other.event_type,
-            self.parent_id == other.parent_id,
-            self.container_id == other.container_id
-        ))
 
 
 class EventMeta(MetaClass):

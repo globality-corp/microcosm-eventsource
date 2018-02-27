@@ -1,0 +1,222 @@
+"""
+Rolled up event store.
+
+"""
+from sqlalchemy import func
+from sqlalchemy.orm import aliased
+from sqlalchemy.orm.exc import NoResultFound
+
+from microcosm_eventsource.models.rollup import RollUp
+from microcosm_postgres.context import SessionContext
+from microcosm_postgres.errors import ModelNotFoundError
+
+
+class RollUpStore:
+
+    def __init__(self, container_store, event_store, rollup=RollUp):
+        self.container_store = container_store
+        self.event_store = event_store
+        self.rollup = rollup
+
+    @property
+    def model_class(self):
+        return self.rollup
+
+    @property
+    def container_type(self):
+        return self.container_store.model_class
+
+    @property
+    def event_type(self):
+        return self.event_store.model_class
+
+    def retrieve(self, identifier):
+        """
+        Retrieve a single rolled-up event.
+
+        """
+        container = self._retrieve_container(identifier)
+        aggregate = self._aggregate()
+
+        try:
+            return self.rollup(
+                *self._filter(
+                    self._rollup_query(
+                        container,
+                        aggregate,
+                    ),
+                    **aggregate
+                ).one()
+            )
+        except NoResultFound as error:
+            raise ModelNotFoundError(
+                "{} not found".format(
+                    self.container_type.__name__,
+                ),
+                error,
+            )
+
+    def count(self, **kwargs):
+        """
+        Query the number of possible rolled-up rows.
+
+        Note that this count avoids joining across the event store; this logic works as long as
+        every container row has at least one event row; we consider this a best practice.
+
+        """
+        return self.container_store.count(**kwargs)
+
+    def search(self, **kwargs):
+        """
+        Implement a rolled-up search of containers by their most recent event.
+
+        Attempt to use the container object's store's filtering to limit the number of events
+        that needs to be rolled up.
+
+        """
+        # SELECT
+        #   <event.*>,
+        #   <container.*>,
+        #   rank...
+        #   FROM (
+        #     SELECT
+        #       <event.*>,
+        #       rank() OVER (
+        #         PARTITION BY <event>.<container_id> ORDER BY <event>.clock DESC
+        #       ) as rank
+        #       ...
+        #       FROM <event>
+        #       JOIN (
+        #         SELECT <container.*>
+        #           FROM <container>
+        #          WHERE <filter>
+        #       ) as <container>
+        #         ON <container>.id = <event>.<container_id>
+        #      ORDER BY <order>
+        #   )
+        #   WHERE rank = 1
+
+        container = self._search_container(**kwargs)
+        aggregate = self._aggregate(**kwargs)
+        return [
+            self.rollup(*row)
+            for row in self._filter(
+                self._rollup_query(
+                    container,
+                    aggregate,
+                    **kwargs
+                ),
+                **aggregate,
+                **kwargs
+            ).all()
+        ]
+
+    def _retrieve_container(self, identifier):
+        """
+        Generate a subquery against the container type, filtering by identifier.
+
+        """
+        # SELECT * FROM <container> WHERE id = <identifier>
+        return self._container_subquery(
+            self.container_store._query().filter(
+                self.container_type.id == identifier,
+            )
+        )
+
+    def _search_container(self, **kwargs):
+        """
+        Generate a subquery against the container type, filtering by kwargs.
+
+        """
+        # SELECT * FROM <container> WHERE <filter>
+        return self._container_subquery(
+            self.container_store._filter(
+                self.container_store._query(),
+                **kwargs
+            )
+        )
+
+    def _container_subquery(self, query):
+        """
+        Wrap a container query so that it can be used in an aggregation.
+
+        This operation generates as subquery and explicitly maps the subquery to the table name so that ordering
+        can be applied in `_rollup_query` without modifying the container store. This operation further wraps the
+        subquery in an alias to the container type so that it can be referenced in `_rollup_query` as an entity.
+
+        """
+        return aliased(
+            self.container_type,
+            query.subquery(
+                self.container_type.__tablename__,
+            ),
+        )
+
+    def _aggregate(self, **kwargs):
+        """
+        Emit a dictionary of window functions by which to aggregate events.
+
+        By default, `_aggregate` performs a rank by clock values to pick the most recent row per logical time.
+
+        """
+        # rank() OVER (partition by <container_id> order by clock desc)
+        # ... <possibly more>
+        return dict(
+            rank=func.rank().over(
+                order_by=self.event_type.clock.desc(),
+                partition_by=self.event_type.container_id,
+            ),
+        )
+
+    def _rollup_query(self, container, aggregate, **kwargs):
+        """
+        Query for events and aggregates that match the container subquery.
+
+        We expect that the number of (filtered) container rows (e.g. via a LIMIT statement) to be much less than
+        the number of total event rows. Note that if we were to query by events first and then by the container
+        type, we might select many more rows.
+
+        The query applies `from_self` so that aggregates can be legally used in the `_filter` WHERE clause.
+        (Window functons are otherwise not allowed in WHERE because they are applied after other conditions.)
+
+        """
+        # SELECT *
+        #   FROM (
+        #     SELECT <event.*>, <container.*>, rank
+        #       FROM <event_type>
+        #       JOIN <container_type> ON <container_type>.id = <event_type>.container_id
+        #      ORDER BY <order>
+        #   )
+        return self.container_store._order_by(
+            self._query(
+                container,
+                aggregate,
+            ),
+            **kwargs
+        ).from_self()
+
+    def _query(self, container, aggregate):
+        """
+        Query events, containers, and aggregates together.
+
+        """
+        return SessionContext.session.query(
+            self.event_type,
+            container,
+        ).add_columns(
+            *aggregate.values(),
+        ).join(
+            container,
+            container.id == self.event_type.container_id,
+        )
+
+    def _filter(self, query, rank, **kwargs):
+        """
+        Filter by aggregates.
+
+        By default, selects only events with the top rank (e.g. most recent clock).
+
+        """
+        return query.filter(
+            rank == 1,
+        )
