@@ -91,6 +91,9 @@ class TaskStore(Store):
     def __init__(self, graph):
         super(TaskStore, self).__init__(graph, Task)
 
+    def _order_by(self, query, **kwargs):
+        return query.order_by(Task.created_at.desc())
+
 
 @binding("task_event_store")
 class TaskEventStore(EventStore):

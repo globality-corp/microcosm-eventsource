@@ -2,7 +2,8 @@
 Persistence tests.
 
 """
-from os.path import dirname
+from os import pardir
+from os.path import dirname, join
 
 from hamcrest import (
     assert_that,
@@ -35,7 +36,7 @@ class TestEventStore:
     def setup(self):
         self.graph = create_object_graph(
             "example",
-            root_path=dirname(__file__),
+            root_path=join(dirname(__file__), pardir),
             testing=True,
         )
         self.graph.use(
