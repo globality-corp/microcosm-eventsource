@@ -19,6 +19,10 @@ class RollUpStore:
         self.rollup = rollup
 
     @property
+    def model_class(self):
+        return self.rollup
+
+    @property
     def container_type(self):
         return self.container_store.model_class
 
@@ -37,7 +41,7 @@ class RollUpStore:
         try:
             return self.rollup(
                 *self._filter(
-                    self._query(
+                    self._rollup_query(
                         container,
                         aggregate,
                     ),
@@ -97,7 +101,7 @@ class RollUpStore:
         return [
             self.rollup(*row)
             for row in self._filter(
-                self._query(
+                self._rollup_query(
                     container,
                     aggregate,
                     **kwargs
@@ -137,8 +141,8 @@ class RollUpStore:
         Wrap a container query so that it can be used in an aggregation.
 
         This operation generates as subquery and explicitly maps the subquery to the table name so that ordering
-        can be applied in `_query` without modifying the container store. This operation further wraps the subquery
-        in an alias to the container type so that it can be referenced in `_query` as an entity.
+        can be applied in `_rollup_query` without modifying the container store. This operation further wraps the
+        subquery in an alias to the container type so that it can be referenced in `_rollup_query` as an entity.
 
         """
         return aliased(
@@ -164,7 +168,7 @@ class RollUpStore:
             ),
         )
 
-    def _query(self, container, aggregate, **kwargs):
+    def _rollup_query(self, container, aggregate, **kwargs):
         """
         Query for events and aggregates that match the container subquery.
 
@@ -184,17 +188,27 @@ class RollUpStore:
         #      ORDER BY <order>
         #   )
         return self.container_store._order_by(
-            SessionContext.session.query(
-                self.event_type,
+            self._query(
                 container,
-            ).add_columns(
-                *aggregate.values(),
-            ).join(
-                container,
-                container.id == self.event_type.container_id,
+                aggregate,
             ),
             **kwargs
         ).from_self()
+
+    def _query(self, container, aggregate):
+        """
+        Query events, containers, and aggregates together.
+
+        """
+        return SessionContext.session.query(
+            self.event_type,
+            container,
+        ).add_columns(
+            *aggregate.values(),
+        ).join(
+            container,
+            container.id == self.event_type.container_id,
+        )
 
     def _filter(self, query, rank, **kwargs):
         """
