@@ -56,7 +56,7 @@ class AllOf(Transition):
         return all(normalize(arg)(cls, state) for arg in self.args)
 
     def __bool__(self):
-        return all(arg for arg in self.args)
+        return any(arg for arg in self.args)
 
     __nonzero__ = __bool__
 
@@ -70,7 +70,7 @@ class AnyOf(Transition):
         return any(normalize(arg)(cls, state) for arg in self.args)
 
     def __bool__(self):
-        return any(arg for arg in self.args)
+        return all(arg for arg in self.args)
 
     __nonzero__ = __bool__
 
