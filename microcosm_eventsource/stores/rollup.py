@@ -39,14 +39,15 @@ class RollUpStore:
         aggregate = self._aggregate()
 
         try:
-            return self.rollup(
+            return self._to_model(
+                aggregate,
                 *self._filter(
                     self._rollup_query(
                         container,
                         aggregate,
                     ),
                     **aggregate
-                ).one()
+                ).one(),
             )
         except NoResultFound as error:
             raise ModelNotFoundError(
@@ -99,7 +100,7 @@ class RollUpStore:
         container = self._search_container(**kwargs)
         aggregate = self._aggregate(**kwargs)
         return [
-            self.rollup(*row)
+            self._to_model(aggregate, *row)
             for row in self._filter(
                 self._rollup_query(
                     container,
@@ -219,4 +220,17 @@ class RollUpStore:
         """
         return query.filter(
             rank == 1,
+        )
+
+    def _to_model(self, aggregate, event, container, *args):
+        keys = aggregate.keys()
+        values = args[:len(keys)]
+        return self.rollup(
+            event,
+            container,
+            {
+                key: value
+                for (key, value) in zip(keys, values)
+            },
+            *args[len(keys):]
         )

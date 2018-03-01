@@ -20,12 +20,29 @@ from microcosm_postgres.context import SessionContext, transaction
 from microcosm_postgres.errors import ModelNotFoundError
 from microcosm_postgres.identifiers import new_object_id
 
+from microcosm_eventsource.func import last
 from microcosm_eventsource.stores import RollUpStore
 from microcosm_eventsource.tests.fixtures import (
     Task,
     TaskEvent,
     TaskEventType,
 )
+
+
+class TaskRollUpStore(RollUpStore):
+
+    def __init__(self, graph):
+        super().__init__(
+            graph.task_store,
+            graph.task_event_store,
+        )
+
+    def _aggregate(self, **kwargs):
+        aggregate = super()._aggregate(**kwargs)
+        aggregate.update(
+            assignee=last.over_(TaskEvent.assignee),
+        )
+        return aggregate
 
 
 class TestRolledUpEventStore:
@@ -42,13 +59,12 @@ class TestRolledUpEventStore:
             "activity_store",
             "activity_event_store",
         )
-        self.store = RollUpStore(
-            self.graph.task_store,
-            self.graph.task_event_store,
-        )
+        self.store = TaskRollUpStore(self.graph)
 
         self.context = SessionContext(self.graph)
+        last.drop(self.graph.postgres)
         self.context.recreate_all()
+        last.create(self.graph.postgres)
         self.context.open()
 
         with transaction():
@@ -68,6 +84,11 @@ class TestRolledUpEventStore:
                 parent_id=self.task2_created_event.id,
                 task_id=self.task2.id,
             ).create()
+            self.task2_started_event = TaskEvent(
+                event_type=TaskEventType.STARTED,
+                parent_id=self.task2_assigned_event.id,
+                task_id=self.task2.id,
+            ).create()
 
     def teardown(self):
         self.context.close()
@@ -80,9 +101,10 @@ class TestRolledUpEventStore:
     def test_retrieve(self):
         rollup = self.store.retrieve(self.task2.id)
         assert_that(rollup, has_properties(
-            _event=self.task2_assigned_event,
+            _event=self.task2_started_event,
             _container=self.task2,
             _rank=1,
+            _assignee="Alice",
         ))
 
     def test_retrieve_not_found(self):
@@ -96,9 +118,10 @@ class TestRolledUpEventStore:
         assert_that(results, has_length(2))
         assert_that(results, contains(
             has_properties(
-                _event=self.task2_assigned_event,
+                _event=self.task2_started_event,
                 _container=self.task2,
                 _rank=1,
+                _assignee="Alice",
             ),
             has_properties(
                 _event=self.task1_created_event,
