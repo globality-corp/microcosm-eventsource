@@ -12,10 +12,21 @@ class RollUp:
     object and that specific event attributes will be exposed via @property syntax.
 
     """
-    def __init__(self, event, container, rank, *args, **kwargs):
+    def __init__(self, event, container, aggregate, *args):
+        """
+        Roll ups are constructed with a single row from a roll up store query.
+
+        By default, every row will contain:
+
+        :param event: the most recent event in the roll up
+        :param container: the container of the rolled up events
+        :param aggregate: any other aggregates (window functions) across rolled up events
+
+        """
         self._event = event
         self._container = container
-        self._rank = rank
+        for key, value in aggregate.items():
+            setattr(self, f"_{key}", value)
 
     @property
     def latest_event_type(self):
