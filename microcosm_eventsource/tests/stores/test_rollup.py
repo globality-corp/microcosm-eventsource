@@ -40,7 +40,7 @@ class TaskRollUpStore(RollUpStore):
     def _aggregate(self, **kwargs):
         aggregate = super()._aggregate(**kwargs)
         aggregate.update(
-            assignee=last.over_(TaskEvent.assignee),
+            assignee=last.of(TaskEvent.assignee),
         )
         return aggregate
 
@@ -62,9 +62,7 @@ class TestRolledUpEventStore:
         self.store = TaskRollUpStore(self.graph)
 
         self.context = SessionContext(self.graph)
-        last.drop(self.graph.postgres)
         self.context.recreate_all()
-        last.create(self.graph.postgres)
         self.context.open()
 
         with transaction():

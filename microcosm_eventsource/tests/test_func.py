@@ -28,9 +28,7 @@ class TestLast:
         )
 
         self.context = SessionContext(self.graph)
-        last.drop(self.graph.postgres)
         self.context.recreate_all()
-        last.create(self.graph.postgres)
         self.context.open()
 
         with transaction():
@@ -69,10 +67,7 @@ class TestLast:
     def test_last(self):
         rows = self.context.session.query(
             TaskEvent.assignee,
-            last(TaskEvent.assignee).over(
-                order_by=TaskEvent.clock.asc(),
-                partition_by=TaskEvent.container_id,
-            ),
+            last.of(TaskEvent.assignee),
         ).order_by(
             TaskEvent.clock.desc(),
         ).all()
