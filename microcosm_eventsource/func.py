@@ -2,8 +2,30 @@
 Custom database functions.
 
 """
+from pkg_resources import resource_string
+
+from microcosm_postgres.models import Model
 from sqlalchemy.sql.expression import FunctionElement
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy import DDL, func
+from sqlalchemy.event import listen
+
+
+def load_ddl(name, action):
+    return resource_string("microcosm_eventsource", f"ddl/{name}.{action}.ddl").decode("utf-8")
+
+
+# register custom DDL when calling `create_all` or `drop_all`
+listen(
+    Model.metadata,
+    "after_create",
+    DDL(load_ddl("last_agg_sfunc", "create") + load_ddl("last_agg", "create")),
+)
+listen(
+    Model.metadata,
+    "after_drop",
+    DDL(load_ddl("last_agg", "drop") + load_ddl("last_agg_sfunc", "drop")),
+)
 
 
 class last(FunctionElement):
@@ -14,47 +36,16 @@ class last(FunctionElement):
     name = "last"
 
     @classmethod
-    def over_(cls, column):
+    def of(cls, column):
+        """
+        Generate a window function over an event's column.
+
+        """
         event = column.class_
         return cls(column).over(
             order_by=event.clock.asc(),
             partition_by=event.container_id,
         )
-
-    @staticmethod
-    def create(connection):
-        """
-        Create the postgres functions for this implementation.
-
-        XXX Not currently called in any automatic way.
-
-        """
-        connection.execute("""
-          CREATE OR REPLACE FUNCTION last_agg_sfunc (state anyelement, value anyelement)
-                 RETURNS anyelement
-                 LANGUAGE SQL
-                 IMMUTABLE
-          AS $$
-            SELECT coalesce(value, state);
-          $$;
-        """)
-        connection.execute("""
-          CREATE AGGREGATE last_agg (anyelement) (
-                SFUNC = last_agg_sfunc,
-                STYPE = anyelement
-          );
-        """)
-
-    @staticmethod
-    def drop(connection):
-        """
-        Drop the postgres functions for this implementation.
-
-
-        XXX Not currently called in any automatic way.
-        """
-        connection.execute("DROP AGGREGATE IF EXISTS last_agg (anyelement);")
-        connection.execute("DROP FUNCTION IF EXISTS last_agg_sfunc (state anyelement, value anyelement);")
 
 
 @compiles(last)
@@ -73,3 +64,10 @@ def compile_postgres(element, compiler, **kwargs):
 
     """
     return f"last_agg({compiler.process(element.clauses)})"
+
+
+def ranked(event_type):
+    return func.rank().over(
+        order_by=event_type.clock.desc(),
+        partition_by=event_type.container_id,
+    )

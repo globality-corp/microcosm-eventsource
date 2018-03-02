@@ -4,7 +4,7 @@ Event type tests.
 """
 from hamcrest import assert_that, contains, equal_to, is_
 
-from microcosm_eventsource.tests.fixtures import TaskEventType
+from microcosm_eventsource.tests.fixtures import TaskEventType, FlexibleTaskEventType
 
 
 def test_accumulate_state():
@@ -66,6 +66,14 @@ def test_is_initial():
     """
     assert_that(TaskEventType.CREATED.is_initial, is_(equal_to(True)))
     assert_that(TaskEventType.STARTED.is_initial, is_(equal_to(False)))
+
+
+def test_is_initial_for_event_that_can_also_be_non_initial():
+    """
+    Events with no following information may be initial.
+
+    """
+    assert_that(FlexibleTaskEventType.CREATED.is_initial, is_(equal_to(True)))
 
 
 def test_assign_before_scheduled():

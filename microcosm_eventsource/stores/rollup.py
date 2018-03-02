@@ -2,10 +2,10 @@
 Rolled up event store.
 
 """
-from sqlalchemy import func
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import NoResultFound
 
+from microcosm_eventsource.func import ranked
 from microcosm_eventsource.models.rollup import RollUp
 from microcosm_postgres.context import SessionContext
 from microcosm_postgres.errors import ModelNotFoundError
@@ -163,10 +163,7 @@ class RollUpStore:
         # rank() OVER (partition by <container_id> order by clock desc)
         # ... <possibly more>
         return dict(
-            rank=func.rank().over(
-                order_by=self.event_type.clock.desc(),
-                partition_by=self.event_type.container_id,
-            ),
+            rank=ranked(self.event_type),
         )
 
     def _rollup_query(self, container, aggregate, **kwargs):

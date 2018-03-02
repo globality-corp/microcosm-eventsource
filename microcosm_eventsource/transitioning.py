@@ -2,6 +2,7 @@
 Transition mini-language.
 
 """
+from abc import ABCMeta
 
 
 def normalize(value):
@@ -14,7 +15,28 @@ def normalize(value):
     return event(value)
 
 
-class Nothing:
+class Transition(metaclass=ABCMeta):
+
+    def __call__(self, cls, state):
+        """
+        Is this `state` allowed to transition (follow) from the given event type `cls`?
+
+        :returns: boolean
+
+        """
+        return False
+
+    def __bool__(self):
+        """
+        Is this state non-initial?
+
+        :returns: boolean
+
+        """
+        return True
+
+
+class Nothing(Transition):
 
     def __call__(self, cls, state):
         return not(state)
@@ -25,7 +47,7 @@ class Nothing:
     __nonzero__ = __bool__
 
 
-class AllOf:
+class AllOf(Transition):
 
     def __init__(self, *args):
         self.args = args
@@ -34,12 +56,12 @@ class AllOf:
         return all(normalize(arg)(cls, state) for arg in self.args)
 
     def __bool__(self):
-        return all(arg for arg in self.args)
+        return any(arg for arg in self.args)
 
     __nonzero__ = __bool__
 
 
-class AnyOf:
+class AnyOf(Transition):
 
     def __init__(self, *args):
         self.args = args
@@ -48,12 +70,12 @@ class AnyOf:
         return any(normalize(arg)(cls, state) for arg in self.args)
 
     def __bool__(self):
-        return any(arg for arg in self.args)
+        return all(arg for arg in self.args)
 
     __nonzero__ = __bool__
 
 
-class ButNot:
+class ButNot(Transition):
 
     def __init__(self, arg):
         self.arg = arg
@@ -67,7 +89,7 @@ class ButNot:
     __nonzero__ = __bool__
 
 
-class Event:
+class Event(Transition):
 
     def __init__(self, name):
         self.name = name

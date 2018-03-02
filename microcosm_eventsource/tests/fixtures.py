@@ -24,6 +24,16 @@ from microcosm_eventsource.routes import configure_event_crud
 from microcosm_eventsource.stores import EventStore
 
 
+class FlexibleTaskEventType(EventType):
+    # Used to test is_initial
+    CREATED = event_info(
+        follows=any_of(
+            "CREATED",
+            nothing(),
+        ),
+    )
+
+
 class BasicTaskEventType(EventType):
     CREATED = event_info(
         follows=nothing(),
