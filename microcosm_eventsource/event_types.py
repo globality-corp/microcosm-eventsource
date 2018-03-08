@@ -40,8 +40,8 @@ class EventTypeInfo:
         :param restarting: whether the event type may restart a (new) version
 
         """
-        self.follows = follows or nothing()
-        self.accumulate = accumulate or current()
+        self.follows = follows if follows is not None else nothing()
+        self.accumulate = accumulate if accumulate is not None else current()
         self.restarting = restarting
         self.requires = requires
 
