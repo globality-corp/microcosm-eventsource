@@ -44,6 +44,13 @@ class TaskRollUpStore(RollUpStore):
         )
         return aggregate
 
+    def _filter(self, query, aggregate, asignee=None, **kwargs):
+        if asignee is not None:
+            query = query.filter(
+                aggregate["assignee"] == asignee,
+            )
+        return super()._filter(query, aggregate, asignee=asignee, **kwargs)
+
 
 class TestRolledUpEventStore:
 
@@ -127,3 +134,21 @@ class TestRolledUpEventStore:
                 _rank=1,
             ),
         ))
+
+    def test_filter(self):
+        results = self.store.search(asignee="Alice")
+        assert_that(results, has_length(1))
+        assert_that(results, contains(
+            has_properties(
+                _event=self.task2_started_event,
+                _container=self.task2,
+                _rank=1,
+                _assignee="Alice",
+            ),
+        ))
+
+    def test_exact_count(self):
+        count = self.store.count(asignee="Alice")
+        exact_count = self.store.exact_count(asignee="Alice")
+        assert_that(count, is_(equal_to(2)))
+        assert_that(exact_count, is_(equal_to(1)))
