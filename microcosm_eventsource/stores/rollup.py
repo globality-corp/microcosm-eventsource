@@ -46,7 +46,7 @@ class RollUpStore:
                         container,
                         aggregate,
                     ),
-                    **aggregate
+                    aggregate
                 ).one(),
             )
         except NoResultFound as error:
@@ -63,13 +63,34 @@ class RollUpStore:
 
         Note that this count avoids joining across the event store; this logic works as long as
         every container row has at least one event row; we consider this a best practice.
+        For the exact results - use exact_count.
 
         """
         return self.container_store.count(**kwargs)
 
+    def exact_count(self, **kwargs):
+        """
+        Query the number of possible rolled-up rows.
+
+        Note that this count joins across the event store - and costs more to calculate.
+
+        """
+        return self._search_query(**kwargs).count()
+
     def search(self, **kwargs):
         """
         Implement a rolled-up search of containers by their most recent event.
+
+        """
+        aggregate = self._aggregate(**kwargs)
+        return [
+            self._to_model(aggregate, *row)
+            for row in self._search_query(aggregate, **kwargs).all()
+        ]
+
+    def _search_query(self, aggregate=None, **kwargs):
+        """
+        Create the query for a rolled-up search of containers by their most recent event.
 
         Attempt to use the container object's store's filtering to limit the number of events
         that needs to be rolled up.
@@ -98,19 +119,16 @@ class RollUpStore:
         #   WHERE rank = 1
 
         container = self._search_container(**kwargs)
-        aggregate = self._aggregate(**kwargs)
-        return [
-            self._to_model(aggregate, *row)
-            for row in self._filter(
-                self._rollup_query(
-                    container,
-                    aggregate,
-                    **kwargs
-                ),
-                **aggregate,
+        aggregate = aggregate or self._aggregate(**kwargs)
+        return self._filter(
+            self._rollup_query(
+                container,
+                aggregate,
                 **kwargs
-            ).all()
-        ]
+            ),
+            aggregate,
+            **kwargs
+        )
 
     def _retrieve_container(self, identifier):
         """
@@ -208,7 +226,7 @@ class RollUpStore:
             container.id == self.event_type.container_id,
         )
 
-    def _filter(self, query, rank, **kwargs):
+    def _filter(self, query, aggregate, **kwargs):
         """
         Filter by aggregates.
 
@@ -216,7 +234,7 @@ class RollUpStore:
 
         """
         return query.filter(
-            rank == 1,
+            aggregate["rank"] == 1,
         )
 
     def _to_model(self, aggregate, event, container, *args):
