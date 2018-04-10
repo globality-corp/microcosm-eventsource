@@ -63,7 +63,7 @@ class RollUpStore:
 
         Note that this count avoids joining across the event store; this logic works as long as
         every container row has at least one event row; we consider this a best practice.
-        For the excact results - use exact_count.
+        For the exact results - use exact_count.
 
         """
         return self.container_store.count(**kwargs)
