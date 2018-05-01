@@ -59,6 +59,7 @@ class EventFactory:
         if not event_info.parent:
             event_info.parent = self.event_store.retrieve_most_recent(**kwargs)
         self.create_transition(event_info, **kwargs)
+        self.create_autotransition_event(ns, sns_producer, parent=event_info.event, version=version, **kwargs)
         return event_info.event
 
     def create_transition(self, event_info, **kwargs):
@@ -73,6 +74,19 @@ class EventFactory:
         """
         self.process_state_transition(event_info)
         self.create_event(event_info, **kwargs)
+
+    def create_autotransition_event(self, ns, sns_producer, parent, **kwargs):
+        """
+        Creates the next autotransition event if exist
+
+        """
+        auto_transition_events = [
+            event_type for event_type in parent.event_type.autotransition_events()
+            if event_type.may_transition(parent.state)
+        ]
+        if not auto_transition_events:
+            return
+        self.create(ns, sns_producer, event_type=auto_transition_events[0], parent=parent, **kwargs)
 
     def validate_required_fields(self, event_info, **kwargs):
         """

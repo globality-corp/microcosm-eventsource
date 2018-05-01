@@ -20,7 +20,7 @@ from microcosm.loaders import load_from_dict
 from microcosm_postgres.identifiers import new_object_id
 from microcosm_postgres.operations import recreate_all
 from microcosm_postgres.context import SessionContext, transaction
-from mock import patch
+from mock import call, patch
 
 from microcosm_eventsource.tests.fixtures import (
     Task,
@@ -299,3 +299,42 @@ class TestTaskEventCRUDRoutes:
         with SessionContext(self.graph), transaction():
             task_event = self.graph.task_event_store.retrieve(data["id"])
             assert_that(task_event.state, is_(contains(TaskEventType.CREATED)))
+
+    def test_auto_transition(self):
+        with SessionContext(self.graph), transaction():
+            started_event = list(islice(self.iter_events(), 4))[-1]
+            assert_that(started_event.event_type, is_(equal_to(TaskEventType.STARTED)))
+
+        response = self.client.post(
+            "/api/v1/task_event",
+            data=dumps(dict(
+                taskId=str(self.task.id),
+                eventType=TaskEventType.COMPLETED.name,
+            )),
+        )
+        assert_that(response.status_code, is_(equal_to(201)))
+
+        data = loads(response.data.decode("utf-8"))
+        assert_that(data, has_entry("eventType", str(TaskEventType.COMPLETED)))
+
+        with SessionContext(self.graph), transaction():
+            completed_task_event = self.graph.task_event_store.retrieve(data["id"])
+            assert_that(completed_task_event.event_type, is_(TaskEventType.COMPLETED))
+            assert_that(completed_task_event.clock, is_(5))
+            ended_task_event = self.graph.task_event_store.retrieve_most_recent(task_id=self.task.id)
+            assert_that(ended_task_event.event_type, is_(TaskEventType.ENDED))
+            assert_that(ended_task_event.clock, is_(6))
+
+        self.graph.sns_producer.produce.assert_has_calls(
+            [
+                call(
+                    media_type="application/vnd.globality.pubsub._.created.task_event.completed",
+                    uri="http://localhost/api/v1/task_event/{}".format(data["id"]),
+                ),
+                call(
+                    media_type="application/vnd.globality.pubsub._.created.task_event.ended",
+                    uri="http://localhost/api/v1/task_event/{}".format(ended_task_event.id),
+                ),
+            ],
+            any_order=True,
+        )
