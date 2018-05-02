@@ -223,7 +223,6 @@ def test_all_states():
         {TaskEventType.CREATED, TaskEventType.SCHEDULED},
         {TaskEventType.CREATED, TaskEventType.SCHEDULED, TaskEventType.ASSIGNED},
     ]
-    print(list(TaskEventType.all_states()))
     assert_that(list(TaskEventType.all_states()), contains_inanyorder(*expected_states))
 
 
