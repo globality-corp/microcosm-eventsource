@@ -59,7 +59,7 @@ class BasicTaskEventType(EventType):
     )
     ENDED = event_info(
         follows=event("COMPLETED"),
-        autotransition=True,
+        auto_transition=True,
     )
 
 

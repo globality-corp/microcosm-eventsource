@@ -2,7 +2,7 @@
 Event type tests.
 
 """
-from hamcrest import assert_that, contains, contains_inanyorder, equal_to, is_
+from hamcrest import assert_that, calling, contains, contains_inanyorder, equal_to, is_, raises
 
 from microcosm_eventsource.tests.fixtures import TaskEventType, FlexibleTaskEventType
 from microcosm_eventsource.event_types import event_info, EventType
@@ -10,15 +10,15 @@ from microcosm_eventsource.transitioning import event
 
 
 class IllegalEventType(EventType):
-    # Event type with  non valid auto transiation event
+    # Event type with  non valid auto transition event
     CREATED = event_info()
     ASSIGNED = event_info(
         follows=event("CREATED"),
-        autotransition=True,
+        auto_transition=True,
     )
     SCHEDULED = event_info(
         follows=event("CREATED"),
-        autotransition=True,
+        auto_transition=True,
     )
 
 
@@ -210,7 +210,7 @@ def test_completed_is_terminal():
 
 def test_all_states():
     """
-    Find all allowd states.
+    Find all allowed states.
 
     """
     expected_states = [
@@ -223,27 +223,28 @@ def test_all_states():
         {TaskEventType.CREATED, TaskEventType.SCHEDULED},
         {TaskEventType.CREATED, TaskEventType.SCHEDULED, TaskEventType.ASSIGNED},
     ]
-    assert_that(TaskEventType.all_states(), contains_inanyorder(*expected_states))
+    print(list(TaskEventType.all_states()))
+    assert_that(list(TaskEventType.all_states()), contains_inanyorder(*expected_states))
 
 
-def test_autotransition_events():
+def test_auto_transition_events():
     """
-    Find all autotransition events
+    Find all auto-transition events
 
     """
-    assert_that(TaskEventType.autotransition_events(), is_(equal_to([
+    assert_that(TaskEventType.auto_transition_events(), is_(equal_to([
         TaskEventType.ENDED,
     ])))
-    assert_that(IllegalEventType.autotransition_events(), is_(equal_to([
+    assert_that(IllegalEventType.auto_transition_events(), is_(equal_to([
         IllegalEventType.ASSIGNED,
         IllegalEventType.SCHEDULED,
     ])))
 
 
-def test_has_only_valid_transiations():
+def test_assert_only_valid_transitions():
     """
-    Test that the state machine supports only valid transiations.
+    Test that the state machine supports only valid transitions.
 
     """
-    assert_that(TaskEventType.has_only_valid_transiations(), is_(equal_to(True)))
-    assert_that(IllegalEventType.has_only_valid_transiations(), is_(equal_to(False)))
+    TaskEventType.assert_only_valid_transitions()
+    assert_that(calling(IllegalEventType.assert_only_valid_transitions), raises(AssertionError))
