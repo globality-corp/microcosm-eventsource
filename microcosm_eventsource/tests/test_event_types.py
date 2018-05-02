@@ -2,9 +2,24 @@
 Event type tests.
 
 """
-from hamcrest import assert_that, contains, equal_to, is_
+from hamcrest import assert_that, calling, contains, contains_inanyorder, equal_to, is_, raises
 
 from microcosm_eventsource.tests.fixtures import TaskEventType, FlexibleTaskEventType
+from microcosm_eventsource.event_types import event_info, EventType
+from microcosm_eventsource.transitioning import event
+
+
+class IllegalEventType(EventType):
+    # Event type with  non valid auto transition event
+    CREATED = event_info()
+    ASSIGNED = event_info(
+        follows=event("CREATED"),
+        auto_transition=True,
+    )
+    SCHEDULED = event_info(
+        follows=event("CREATED"),
+        auto_transition=True,
+    )
 
 
 def test_accumulate_state():
@@ -191,3 +206,44 @@ def test_completed_is_terminal():
 
     # may not be cancelled
     assert_that(TaskEventType.CANCELED.may_transition(state), is_(equal_to(False)))
+
+
+def test_all_states():
+    """
+    Find all allowed states.
+
+    """
+    expected_states = [
+        {TaskEventType.CREATED},
+        {TaskEventType.STARTED},
+        {TaskEventType.CANCELED},
+        {TaskEventType.COMPLETED},
+        {TaskEventType.ENDED},
+        {TaskEventType.CREATED, TaskEventType.ASSIGNED},
+        {TaskEventType.CREATED, TaskEventType.SCHEDULED},
+        {TaskEventType.CREATED, TaskEventType.SCHEDULED, TaskEventType.ASSIGNED},
+    ]
+    assert_that(list(TaskEventType.all_states()), contains_inanyorder(*expected_states))
+
+
+def test_auto_transition_events():
+    """
+    Find all auto-transition events
+
+    """
+    assert_that(TaskEventType.auto_transition_events(), is_(equal_to([
+        TaskEventType.ENDED,
+    ])))
+    assert_that(IllegalEventType.auto_transition_events(), is_(equal_to([
+        IllegalEventType.ASSIGNED,
+        IllegalEventType.SCHEDULED,
+    ])))
+
+
+def test_assert_only_valid_transitions():
+    """
+    Test that the state machine supports only valid transitions.
+
+    """
+    TaskEventType.assert_only_valid_transitions()
+    assert_that(calling(IllegalEventType.assert_only_valid_transitions), raises(AssertionError))
