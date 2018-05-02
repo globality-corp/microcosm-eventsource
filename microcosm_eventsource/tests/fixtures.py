@@ -57,6 +57,10 @@ class BasicTaskEventType(EventType):
     COMPLETED = event_info(
         follows=event("STARTED"),
     )
+    ENDED = event_info(
+        follows=event("COMPLETED"),
+        auto_transition=True,
+    )
 
 
 class AdvancedTaskEventType(Enum):
