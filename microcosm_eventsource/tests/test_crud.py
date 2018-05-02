@@ -336,5 +336,4 @@ class TestTaskEventCRUDRoutes:
                     uri="http://localhost/api/v1/task_event/{}".format(ended_task_event.id),
                 ),
             ],
-            any_order=True,
         )
