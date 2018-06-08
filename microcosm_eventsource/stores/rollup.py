@@ -150,7 +150,9 @@ class RollUpStore:
         # SELECT * FROM <container> WHERE <filter>
         return self._container_subquery(
             self.container_store._filter(
-                self.container_store._query(),
+                self.container_store._order_by(
+                    self.container_store._query(),
+                ),
                 **kwargs
             )
         )
