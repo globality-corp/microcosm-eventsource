@@ -36,13 +36,13 @@ class last(FunctionElement):
     name = "last"
 
     @classmethod
-    def of(cls, column):
+    def of(cls, column, *filter_by):
         """
         Generate a window function over an event's column.
 
         """
         event = column.class_
-        return cls(column).over(
+        return cls(column).filter(*filter_by).over(
             order_by=event.clock.asc(),
             partition_by=event.container_id,
         )

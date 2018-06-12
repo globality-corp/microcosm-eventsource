@@ -79,3 +79,22 @@ class TestLast:
             contains("Alice", "Alice"),
             contains(None, None),
         ))
+
+    def test_last_filter_by(self):
+        rows = self.context.session.query(
+            TaskEvent.assignee,
+            last.of(
+                TaskEvent.assignee,
+                TaskEvent.event_type == TaskEventType.ASSIGNED,
+            ),
+        ).order_by(
+            TaskEvent.clock.desc(),
+        ).all()
+
+        assert_that(rows, contains(
+            contains(None, "Alice"),
+            contains("Bob", "Alice"),
+            contains(None, "Alice"),
+            contains("Alice", "Alice"),
+            contains(None, None),
+        ))
