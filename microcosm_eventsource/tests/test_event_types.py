@@ -237,6 +237,29 @@ def test_all_states():
     assert_that(list(TaskEventType.all_states()), contains_inanyorder(*expected_states))
 
 
+def test_all_states_and_events():
+    """
+    Find all allowed states.
+
+    """
+    states_and_events = [
+        (state, event_type)
+        for (state, event_type)
+        in TaskEventType.all_states_and_events()
+        if state in (
+            {TaskEventType.CREATED},
+            {TaskEventType.CREATED, TaskEventType.ASSIGNED, TaskEventType.SCHEDULED},
+        )
+    ]
+    expected_states_and_events = [
+        ({TaskEventType.CREATED}, TaskEventType.CREATED),
+        ({TaskEventType.CREATED}, TaskEventType.REVISED),
+        ({TaskEventType.CREATED, TaskEventType.ASSIGNED, TaskEventType.SCHEDULED}, TaskEventType.ASSIGNED),
+        ({TaskEventType.CREATED, TaskEventType.ASSIGNED, TaskEventType.SCHEDULED}, TaskEventType.SCHEDULED),
+    ]
+    assert_that(states_and_events, contains_inanyorder(*expected_states_and_events))
+
+
 def test_all_transitions():
     """
     Find all allowed transitions.

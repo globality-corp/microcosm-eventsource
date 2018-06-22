@@ -204,6 +204,37 @@ class EventType(Enum):
                     known_states.add(new_state)
 
     @classmethod
+    def all_states_and_events(cls):
+        """
+        Return a generator of all allowed (state, event_type) combinations
+        Note: it can return the same state or event twice (but all uniqu)
+
+        """
+        intial_states = list(cls.intial_states())
+        intial_states_and_events = [(state, list(state)[0]) for state in intial_states]
+        yield from intial_states_and_events
+        next_states = intial_states
+        known_states = set(intial_states)
+        known_states_and_events = set(intial_states_and_events)
+
+        while True:
+            if not next_states:
+                return
+            current_states = next_states
+            next_states = []
+            for state in current_states:
+                for event_type in cls.available_transitions(state):
+                    new_state = frozenset(event_type.accumulate_state(state))
+                    if (new_state, event_type) in known_states_and_events:
+                        continue
+                    known_states_and_events.add((new_state, event_type))
+                    yield new_state, event_type
+                    if new_state in known_states:
+                        continue
+                    next_states.append(new_state)
+                    known_states.add(new_state)
+
+    @classmethod
     def all_transitions(cls, states=None):
         """
         Return a generator of all allowed transitions as a tuple of (initial state, new state, event type).
