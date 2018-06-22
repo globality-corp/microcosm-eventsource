@@ -208,6 +208,17 @@ def test_completed_is_terminal():
     assert_that(TaskEventType.CANCELED.may_transition(state), is_(equal_to(False)))
 
 
+def test_initial_states():
+    """
+    Find all initial states.
+
+    """
+    expected_states = [
+        {TaskEventType.CREATED},
+    ]
+    assert_that(list(TaskEventType.intial_states()), contains_inanyorder(*expected_states))
+
+
 def test_all_states():
     """
     Find all allowed states.
@@ -224,6 +235,29 @@ def test_all_states():
         {TaskEventType.CREATED, TaskEventType.SCHEDULED, TaskEventType.ASSIGNED},
     ]
     assert_that(list(TaskEventType.all_states()), contains_inanyorder(*expected_states))
+
+
+def test_all_transitions():
+    """
+    Find all allowed transitions.
+
+    """
+    from_states = [
+        {TaskEventType.CREATED},
+        {TaskEventType.CREATED, TaskEventType.SCHEDULED},
+    ]
+    expected_states = [
+        ({TaskEventType.CREATED}, {TaskEventType.CREATED}, TaskEventType.REVISED),
+        ({TaskEventType.CREATED}, {TaskEventType.CREATED, TaskEventType.ASSIGNED}, TaskEventType.ASSIGNED),
+        ({TaskEventType.CREATED}, {TaskEventType.CREATED, TaskEventType.SCHEDULED}, TaskEventType.SCHEDULED),
+        ({TaskEventType.CREATED, TaskEventType.SCHEDULED}, {TaskEventType.CREATED}, TaskEventType.REVISED),
+        (
+            {TaskEventType.CREATED, TaskEventType.SCHEDULED},
+            {TaskEventType.CREATED, TaskEventType.SCHEDULED, TaskEventType.ASSIGNED},
+            TaskEventType.ASSIGNED,
+        ),
+    ]
+    assert_that(list(TaskEventType.all_transitions(from_states)), contains_inanyorder(*expected_states))
 
 
 def test_auto_transition_events():

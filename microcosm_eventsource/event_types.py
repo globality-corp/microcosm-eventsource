@@ -170,14 +170,22 @@ class EventType(Enum):
         return version
 
     @classmethod
+    def intial_states(cls):
+        """
+        Return a generator of all initial states.
+
+        """
+        return (frozenset((event_type,)) for event_type in cls if event_type.is_initial)
+
+    @classmethod
     def all_states(cls):
         """
-        All states that the state machine can reach
+        Return a generator of all allowed states.
 
         """
         # Prefer to use frozenset and not set to represent states in this context
         # Hashable frozenset allows us to easily avoid repeating the same state
-        intial_states = [frozenset((event_type,)) for event_type in cls if event_type.is_initial]
+        intial_states = list(cls.intial_states())
         next_states = intial_states
         known_states = set(intial_states)
 
@@ -194,6 +202,21 @@ class EventType(Enum):
                         continue
                     next_states.append(new_state)
                     known_states.add(new_state)
+
+    @classmethod
+    def all_transitions(cls, states=None):
+        """
+        Return a generator of all allowed transitions as a tuple of (initial state, new state, event type).
+
+        :param state: a list states to check, If None - all allowed states
+
+        """
+        if states is None:
+            states = cls.all_states()
+        for state in states:
+            for event_type in cls.available_transitions(state):
+                new_state = frozenset(event_type.accumulate_state(state))
+                yield (state, new_state, event_type)
 
     @classmethod
     def assert_only_valid_transitions(cls):
