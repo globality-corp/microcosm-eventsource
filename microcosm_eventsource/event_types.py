@@ -170,7 +170,7 @@ class EventType(Enum):
         return version
 
     @classmethod
-    def intial_states(cls):
+    def initial_states(cls):
         """
         Return a generator of all initial states.
 
@@ -185,9 +185,9 @@ class EventType(Enum):
         """
         # Prefer to use frozenset and not set to represent states in this context
         # Hashable frozenset allows us to easily avoid repeating the same state
-        intial_states = list(cls.intial_states())
-        next_states = intial_states
-        known_states = set(intial_states)
+        initial_states = list(cls.initial_states())
+        next_states = initial_states
+        known_states = set(initial_states)
 
         while True:
             if not next_states:
@@ -210,12 +210,12 @@ class EventType(Enum):
         Note: it can return the same state or event twice (but all uniqu)
 
         """
-        intial_states = list(cls.intial_states())
-        intial_states_and_events = [(state, list(state)[0]) for state in intial_states]
-        yield from intial_states_and_events
-        next_states = intial_states
-        known_states = set(intial_states)
-        known_states_and_events = set(intial_states_and_events)
+        initial_states = list(cls.initial_states())
+        initial_states_and_events = [(state, list(state)[0]) for state in initial_states]
+        yield from initial_states_and_events
+        next_states = initial_states
+        known_states = set(initial_states)
+        known_states_and_events = set(initial_states_and_events)
 
         while True:
             if not next_states:

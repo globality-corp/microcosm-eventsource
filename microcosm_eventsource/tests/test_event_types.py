@@ -216,7 +216,7 @@ def test_initial_states():
     expected_states = [
         {TaskEventType.CREATED},
     ]
-    assert_that(list(TaskEventType.intial_states()), contains_inanyorder(*expected_states))
+    assert_that(list(TaskEventType.initial_states()), contains_inanyorder(*expected_states))
 
 
 def test_all_states():
