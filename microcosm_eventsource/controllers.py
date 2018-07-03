@@ -9,9 +9,9 @@ from microcosm_eventsource.factory import EventFactory
 
 class EventController(CRUDStoreAdapter):
 
-    @property
-    def sns_producer(self):
-        return self.graph.sns_producer
+    def __init__(self, graph, store):
+        super().__init__(graph, store)
+        self.sns_producer = graph.sns_producer
 
     @property
     def event_factory(self):
