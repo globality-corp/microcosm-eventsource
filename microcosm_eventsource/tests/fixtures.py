@@ -18,6 +18,7 @@ from microcosm_eventsource.accumulation import alias, keep, union
 from microcosm_eventsource.controllers import EventController
 from microcosm_eventsource.transitioning import all_of, any_of, but_not, event, nothing
 from microcosm_eventsource.event_types import event_info, EventType, EventTypeUnion
+from microcosm_eventsource.factory import EventFactory
 from microcosm_eventsource.models import EventMeta
 from microcosm_eventsource.resources import EventSchema, SearchEventSchema
 from microcosm_eventsource.routes import configure_event_crud
@@ -144,6 +145,17 @@ class TaskEventController(EventController):
         self.ns = Namespace(
             subject=TaskEvent,
             version="v1",
+        )
+
+    def get_event_factory_kwargs(self):
+        return {}
+
+    @property
+    def event_factory(self):
+        return EventFactory(
+            event_store=self.store,
+            identifier_key=self.identifier_key,
+            **self.get_event_factory_kwargs(),
         )
 
 
