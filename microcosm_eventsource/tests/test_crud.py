@@ -337,3 +337,26 @@ class TestTaskEventCRUDRoutes:
                 ),
             ],
         )
+
+    def test_configure_pubsub_event(self):
+        created_event_id = new_object_id()
+        with patch.object(self.graph.task_event_controller, "get_event_factory_kwargs") as mocked_factory_kwargs:
+            mocked_factory_kwargs.return_value = dict(
+                publish_event_pubsub=False,
+                publish_model_pubsub=True,
+            )
+            with patch.object(self.graph.task_event_store, "new_object_id") as mocked:
+                mocked.return_value = created_event_id
+                response = self.client.post(
+                    "/api/v1/task_event",
+                    data=dumps(dict(
+                        taskId=str(self.task.id),
+                        eventType=TaskEventType.CREATED.name,
+                        parentId=str(self.task.id),
+                    )),
+                )
+        assert_that(response.status_code, is_(equal_to(201)))
+        self.graph.sns_producer.produce.assert_called_with(
+            media_type="application/vnd.globality.pubsub._.created.task_event",
+            uri="http://localhost/api/v1/task_event/{}".format(created_event_id),
+        )

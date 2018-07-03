@@ -43,10 +43,19 @@ class EventFactory:
     Base class for creating an event.
 
     """
-    def __init__(self, event_store, default_ns=None, identifier_key=None):
+    def __init__(
+        self,
+        event_store,
+        default_ns=None,
+        identifier_key=None,
+        publish_event_pubsub=True,
+        publish_model_pubsub=False,
+    ):
         self.event_store = event_store
         self.default_ns = default_ns
         self.identifier_key = identifier_key
+        self.publish_event_pubsub = publish_event_pubsub
+        self.publish_model_pubsub = publish_model_pubsub
 
     def create(self, ns, sns_producer, event_type, parent=None, version=None, **kwargs):
         """
@@ -162,10 +171,7 @@ class EventFactory:
 
         event_info.event = self.create_instance(event_info, instance)
 
-        event_info.publish_event(
-            media_type=self.make_media_type(event_info),
-            **self.make_uri_kwargs(event_info)
-        )
+        self.publish_event(event_info)
 
     def create_instance(self, event_info, instance):
         if event_info.parent is None:
@@ -173,11 +179,28 @@ class EventFactory:
         else:
             return self.event_store.upsert_on_index_elements(instance)
 
-    def make_media_type(self, event_info):
-        return created("{}.{}".format(
-            name_for(self.event_store.model_class),
-            event_info.event.event_type.name,
-        ))
+    def publish_event(self, event_info):
+        """
+        Publish a Created(Model.EventType) and / or Created(Model) pubsub messages.
+        Set by publish_event_pubsub and publish_model_pubsub
+
+        """
+        uri_kwargs = self.make_uri_kwargs(event_info)
+        if self.publish_event_pubsub:
+            event_info.publish_event(
+                media_type=created("{}.{}".format(
+                    name_for(self.event_store.model_class),
+                    event_info.event.event_type.name,
+                )),
+                **uri_kwargs,
+            )
+        if self.publish_model_pubsub:
+            event_info.publish_event(
+                media_type=created("{}".format(
+                    name_for(self.event_store.model_class),
+                )),
+                **uri_kwargs,
+            )
 
     def make_uri_kwargs(self, event_info):
         uri_kwargs = dict(_external=True)
