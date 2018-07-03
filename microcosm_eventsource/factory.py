@@ -188,19 +188,24 @@ class EventFactory:
         uri_kwargs = self.make_uri_kwargs(event_info)
         if self.publish_event_pubsub:
             event_info.publish_event(
-                media_type=created("{}.{}".format(
-                    name_for(self.event_store.model_class),
-                    event_info.event.event_type.name,
-                )),
+                media_type=self.make_media_type(event_info),
                 **uri_kwargs,
             )
         if self.publish_model_pubsub:
             event_info.publish_event(
-                media_type=created("{}".format(
-                    name_for(self.event_store.model_class),
-                )),
+                media_type=self.make_media_type(event_info, True),
                 **uri_kwargs,
             )
+
+    def make_media_type(self, event_info, discard_event_type=False):
+        if discard_event_type:
+            return created("{}".format(
+                name_for(self.event_store.model_class),
+            ))
+        return created("{}.{}".format(
+            name_for(self.event_store.model_class),
+            event_info.event.event_type.name,
+        ))
 
     def make_uri_kwargs(self, event_info):
         uri_kwargs = dict(_external=True)
