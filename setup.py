@@ -2,7 +2,7 @@
 from setuptools import find_packages, setup
 
 project = "microcosm-eventsource"
-version = "1.8.3"
+version = "1.8.4"
 
 setup(
     name=project,
