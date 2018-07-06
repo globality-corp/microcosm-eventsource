@@ -5,6 +5,7 @@ Test task crud routes.
 from datetime import datetime
 from itertools import islice
 from json import dumps, loads
+from os import environ
 from os.path import dirname
 
 from hamcrest import (
@@ -32,6 +33,14 @@ from microcosm_eventsource.tests.fixtures import (
 class TestTaskEventCRUDRoutes:
     def setup(self):
         loader = load_from_dict(
+            secret=dict(
+                postgres=dict(
+                    host=environ.get("EXAMPLE__POSTGRES__HOST", "localhost"),
+                ),
+            ),
+            postgres=dict(
+                host=environ.get("EXAMPLE__POSTGRES__HOST", "localhost"),
+            ),
             sns_producer=dict(
                 mock_sns=False,
             ),
