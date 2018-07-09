@@ -71,8 +71,8 @@ jobs:
           command: |
             eval $(aws ecr get-login --no-include-email)
             python -m middlefield globality build build-gen --config .globality/build.json
-            python -m middlefield globality build docker-base --repo microcosm-eventsource
-            python -m middlefield globality build docker --repo microcosm-eventsource
+            python -m middlefield globality build docker-base --repo python-library
+            python -m middlefield globality build docker --repo python-library
 
   test:
     <<: *defaults
@@ -94,8 +94,8 @@ jobs:
             docker create -v /src/microcosm_eventsource/tests/ --name service_tests alpine:3.4 /bin/true
             docker cp $(pwd)/microcosm_eventsource/tests service_tests:/src/microcosm_eventsource/
             eval $(aws ecr get-login --no-include-email)
-            docker pull ${AWS_ECR_DOMAIN}/microcosm-eventsource:${CIRCLE_SHA1}
-            docker run -it  --link microcosm_eventsource_db:postgres -e EXAMPLE__POSTGRES__HOST=postgres --volumes-from service_tests ${AWS_ECR_DOMAIN}/microcosm-eventsource:${CIRCLE_SHA1} test
+            docker pull ${AWS_ECR_DOMAIN}/python-library:${CIRCLE_SHA1}
+            docker run -it  --link microcosm_eventsource_db:postgres -e EXAMPLE__POSTGRES__HOST=postgres --volumes-from service_tests ${AWS_ECR_DOMAIN}/python-library:${CIRCLE_SHA1} test
 
   lint:
     <<: *defaults
@@ -112,8 +112,8 @@ jobs:
             docker create -v /src/microcosm-eventsource/tests/ --name service_tests alpine:3.4 /bin/true
             docker cp $(pwd)/microcosm_eventsource/tests service_tests:/src/microcosm_eventsource/
             eval $(aws ecr get-login --no-include-email)
-            docker pull ${AWS_ECR_DOMAIN}/microcosm-eventsource:${CIRCLE_SHA1}
-            docker run -it --volumes-from service_tests ${AWS_ECR_DOMAIN}/microcosm-eventsource:${CIRCLE_SHA1} lint
+            docker pull ${AWS_ECR_DOMAIN}/python-library:${CIRCLE_SHA1}
+            docker run -it --volumes-from service_tests ${AWS_ECR_DOMAIN}/python-library:${CIRCLE_SHA1} lint
 
 
   deploy:
