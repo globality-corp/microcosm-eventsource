@@ -161,7 +161,9 @@ class RollUpStore:
         """
         Wrap a container query so that it can be used in an aggregation.
 
-        This operation reduces columns - in case of redundant names (e.g. joined table inheritance).
+        This operation reduces columns - in case of redundant names (e.g. joined
+        table inheritance). This operation further wraps the subquery in an alias
+        to the container type so that it can be referenced in `_rollup_query` as an entity.
 
         """
         return aliased(
