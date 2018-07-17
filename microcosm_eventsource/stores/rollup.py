@@ -168,6 +168,7 @@ class RollUpStore:
             self.container_type,
             query.subquery(
                 reduce_columns=True,
+                with_labels=True,
             ),
         )
 
