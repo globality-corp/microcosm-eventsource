@@ -161,15 +161,13 @@ class RollUpStore:
         """
         Wrap a container query so that it can be used in an aggregation.
 
-        This operation generates as subquery and explicitly maps the subquery to the table name so that ordering
-        can be applied in `_rollup_query` without modifying the container store. This operation further wraps the
-        subquery in an alias to the container type so that it can be referenced in `_rollup_query` as an entity.
+        This operation reduces columns - in case of redundant names (e.g. joined table inheritance).
 
         """
         return aliased(
             self.container_type,
             query.subquery(
-                self.container_type.__tablename__,
+                reduce_columns=True,
             ),
         )
 
@@ -226,6 +224,10 @@ class RollUpStore:
         ).join(
             container,
             container.id == self.event_type.container_id,
+        ).join(
+            # extra join for reusing ordinary `_order_by` from container_store
+            self.container_store.model_class,
+            self.container_store.model_class.id == self.event_type.container_id,
         )
 
     def _filter(self, query, aggregate, **kwargs):
