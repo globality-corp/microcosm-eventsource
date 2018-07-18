@@ -161,17 +161,24 @@ class RollUpStore:
         """
         Wrap a container query so that it can be used in an aggregation.
 
-        This operation generates as subquery and explicitly maps the subquery to the table name so that ordering
-        can be applied in `_rollup_query` without modifying the container store. This operation further wraps the
-        subquery in an alias to the container type so that it can be referenced in `_rollup_query` as an entity.
+        If the container class is polymorphic, then the operation reduces columns - in case
+        of redundant names (e.g. joined table inheritance), otherwise operation explicitly maps
+        the subquery to the table name so that ordering can be applied in `_rollup_query` without modifying
+        the container store. This operation further wraps the subquery in an alias
+        to the container type so that it can be referenced in `_rollup_query` as an entity.
 
         """
-        return aliased(
-            self.container_type,
-            query.subquery(
+        if self._is_joined_polymorphic():
+            subquery = query.subquery(
+                reduce_columns=True,
+                with_labels=True,
+            )
+        else:
+            subquery = query.subquery(
                 self.container_type.__tablename__,
-            ),
-        )
+            )
+
+        return aliased(self.container_type, subquery)
 
     def _aggregate(self, **kwargs):
         """
@@ -218,7 +225,7 @@ class RollUpStore:
         Query events, containers, and aggregates together.
 
         """
-        return SessionContext.session.query(
+        query = SessionContext.session.query(
             self.event_type,
             container,
         ).add_columns(
@@ -227,6 +234,15 @@ class RollUpStore:
             container,
             container.id == self.event_type.container_id,
         )
+
+        if self._is_joined_polymorphic():
+            return query.join(
+                # extra join for reusing ordinary `_order_by` from container_store
+                self.container_type,
+                self.container_type.id == self.event_type.container_id,
+            )
+
+        return query
 
     def _filter(self, query, aggregate, **kwargs):
         """
@@ -251,3 +267,14 @@ class RollUpStore:
             },
             *args[len(keys):]
         )
+
+    def _is_joined_polymorphic(self):
+        if hasattr(self.container_type, "__mapper_args__"):
+            return all([
+                # joined polymorphic entity must have a polymorphic_identity set
+                "polymorphic_identity" in self.container_type.__mapper_args__,
+                # and there must exist foreign key on the identifier
+                hasattr(self.container_type.id, "foreign_keys"),
+            ])
+
+        return False
