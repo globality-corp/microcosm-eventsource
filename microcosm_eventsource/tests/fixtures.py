@@ -12,7 +12,8 @@ from microcosm_flask.session import register_session_factory
 from microcosm_postgres.context import SessionContext
 from microcosm_postgres.models import Model, UnixTimestampEntityMixin
 from microcosm_postgres.store import Store
-from sqlalchemy import Column, DateTime, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy_utils import UUIDType
 
 from microcosm_eventsource.accumulation import alias, keep, union
 from microcosm_eventsource.controllers import EventController
@@ -83,6 +84,7 @@ class AdvancedTaskEventType(Enum):
 
 
 TaskEventType = EventTypeUnion("TaskEventType", BasicTaskEventType, AdvancedTaskEventType)
+SubTaskEventType = EventTypeUnion("SubTaskEventType", BasicTaskEventType)
 
 
 class Task(UnixTimestampEntityMixin, Model):
@@ -90,11 +92,42 @@ class Task(UnixTimestampEntityMixin, Model):
 
     description = Column(String)
 
+    discriminator = Column(String, nullable=False)
+
+    __mapper_args__ = dict(
+        polymorphic_identity="task",
+        polymorphic_on=discriminator,
+    )
+
+
+class SubTask(Task):
+    __tablename__ = "sub_task"
+
+    id = Column(
+        UUIDType,
+        ForeignKey("task.id"),
+        primary_key=True,
+    )
+    priority = Column(Integer)
+
+    __mapper_args__ = dict(
+        polymorphic_identity="sub_task",
+    )
+
 
 class TaskEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
     __tablename__ = "task_event"
     __eventtype__ = TaskEventType
     __container__ = Task
+
+    assignee = Column(String)
+    deadline = Column(DateTime)
+
+
+class SubTaskEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
+    __tablename__ = "sub_task_event"
+    __eventtype__ = SubTaskEventType
+    __container__ = SubTask
 
     assignee = Column(String)
     deadline = Column(DateTime)
@@ -110,11 +143,31 @@ class TaskStore(Store):
         return query.order_by(Task.created_at.desc())
 
 
+@binding("sub_task_store")
+class SubTaskStore(Store):
+
+    def __init__(self, graph):
+        super(SubTaskStore, self).__init__(graph, SubTask)
+
+    def _order_by(self, query, **kwargs):
+        return query.order_by(
+            SubTask.description,
+            SubTask.priority,
+        )
+
+
 @binding("task_event_store")
 class TaskEventStore(EventStore):
 
     def __init__(self, graph):
         super(TaskEventStore, self).__init__(graph, TaskEvent)
+
+
+@binding("sub_task_event_store")
+class SubTaskEventStore(EventStore):
+
+    def __init__(self, graph):
+        super(SubTaskEventStore, self).__init__(graph, SubTaskEvent)
 
 
 class NewTaskEventSchema(Schema):
