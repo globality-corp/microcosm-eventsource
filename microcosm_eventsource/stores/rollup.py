@@ -168,7 +168,7 @@ class RollUpStore:
         to the container type so that it can be referenced in `_rollup_query` as an entity.
 
         """
-        if self._is_polymorphic():
+        if self._is_joined_polymorphic():
             subquery = query.subquery(
                 reduce_columns=True,
                 with_labels=True,
@@ -235,7 +235,7 @@ class RollUpStore:
             container.id == self.event_type.container_id,
         )
 
-        if self._is_polymorphic():
+        if self._is_joined_polymorphic():
             return query.join(
                 # extra join for reusing ordinary `_order_by` from container_store
                 self.container_type,
@@ -268,8 +268,13 @@ class RollUpStore:
             *args[len(keys):]
         )
 
-    def _is_polymorphic(self):
+    def _is_joined_polymorphic(self):
         if hasattr(self.container_type, "__mapper_args__"):
-            return "polymorphic_identity" in self.container_type.__mapper_args__
+            return all([
+                # joined polymorphic entity must have a polymorphic_identity set
+                "polymorphic_identity" in self.container_type.__mapper_args__,
+                # and there must exist foreign key on the identifier
+                hasattr(self.container_type.id, "foreign_keys"),
+            ])
 
         return False
