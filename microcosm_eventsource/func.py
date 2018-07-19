@@ -19,12 +19,26 @@ def load_ddl(name, action):
 listen(
     Model.metadata,
     "after_create",
-    DDL(load_ddl("last_agg_sfunc", "create") + load_ddl("last_agg", "create")),
+    DDL(
+        load_ddl("array_sort_unique", "create") +
+        load_ddl("proc_events_delete", "create") +
+        load_ddl("proc_event_type_delete", "create") +
+        load_ddl("last_agg_sfunc", "create") +
+        load_ddl("last_agg", "create") +
+        load_ddl("proc_event_type_replace", "create")
+    ),
 )
 listen(
     Model.metadata,
     "after_drop",
-    DDL(load_ddl("last_agg", "drop") + load_ddl("last_agg_sfunc", "drop")),
+    DDL(
+        load_ddl("array_sort_unique", "drop") +
+        load_ddl("proc_events_delete", "drop") +
+        load_ddl("proc_event_type_delete", "drop") +
+        load_ddl("last_agg", "drop") +
+        load_ddl("last_agg_sfunc", "drop") +
+        load_ddl("proc_event_type_replace", "drop")
+    ),
 )
 
 

@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS array_sort_unique (ANYARRAY);
