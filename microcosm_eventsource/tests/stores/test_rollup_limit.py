@@ -7,19 +7,12 @@ from os.path import dirname, join
 
 from hamcrest import (
     assert_that,
-    calling,
-    contains,
     contains_inanyorder,
-    equal_to,
     has_length,
     has_properties,
-    is_,
-    raises,
 )
 from microcosm.api import create_object_graph
 from microcosm_postgres.context import SessionContext, transaction
-from microcosm_postgres.errors import ModelNotFoundError
-from microcosm_postgres.identifiers import new_object_id
 
 from microcosm_eventsource.func import last
 from microcosm_eventsource.stores import RollUpStore
@@ -48,7 +41,7 @@ class SimpleObjectTestRollupStore(RollUpStore):
     def _filter(self, query, aggregate, event_type=None, **kwargs):
         if event_type:
             query = query.filter(
-                aggregate["event_type"] == str(event_type)
+                aggregate["event_type"] == str(event_type),
             )
 
         return super()._filter(query, aggregate, **kwargs)
