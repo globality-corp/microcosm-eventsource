@@ -10,7 +10,7 @@ from microcosm_flask.fields import EnumField
 from microcosm_flask.namespaces import Namespace
 from microcosm_flask.session import register_session_factory
 from microcosm_postgres.context import SessionContext
-from microcosm_postgres.models import Model, UnixTimestampEntityMixin
+from microcosm_postgres.models import EntityMixin, Model, UnixTimestampEntityMixin
 from microcosm_postgres.store import Store
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy_utils import UUIDType
@@ -24,6 +24,51 @@ from microcosm_eventsource.models import EventMeta
 from microcosm_eventsource.resources import EventSchema, SearchEventSchema
 from microcosm_eventsource.routes import configure_event_crud
 from microcosm_eventsource.stores import EventStore
+
+
+class SimpleTestObjectEventType(EventType):
+    CREATED = event_info(
+        follows=nothing(),
+        accumulate=keep(),
+    )
+    READY = event_info(
+        follows=event("CREATED"),
+        accumulate=keep(),
+    )
+    DONE = event_info(
+        follows=event("READY"),
+        accumulate=keep(),
+    )
+
+
+class SimpleTestObject(Model, EntityMixin):
+    __tablename__ = "simple_test_object"
+
+
+class SimpleTestObjectEvent(EntityMixin, metaclass=EventMeta):
+    __tablename__ = "simple_test_object_event"
+    __eventtype__ = SimpleTestObjectEventType
+    __container__ = SimpleTestObject
+
+    simple_test_object_id = Column(
+        UUIDType(),
+        ForeignKey("simple_test_object.id"),
+        nullable=True,
+    )
+
+
+@binding("simple_test_object_store")
+class SimpleTestObjectStore(Store):
+
+    def __init__(self, graph):
+        super(SimpleTestObjectStore, self).__init__(graph, SimpleTestObject)
+
+
+@binding("simple_test_object_event_store")
+class SimpleTestObjectEventStore(EventStore):
+
+    def __init__(self, graph):
+        super(SimpleTestObjectEventStore, self).__init__(graph, SimpleTestObjectEvent)
 
 
 class FlexibleTaskEventType(EventType):
