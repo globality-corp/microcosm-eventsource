@@ -88,7 +88,7 @@ class RollUpStore:
             for row in self._search_query(aggregate, **kwargs).all()
         ]
 
-    def _search_query(self, aggregate=None, **kwargs):
+    def _search_query(self, aggregate=None, limit=None, offset=None, **kwargs):
         """
         Create the query for a rolled-up search of containers by their most recent event.
 
@@ -117,10 +117,15 @@ class RollUpStore:
         #      ORDER BY <order>
         #   )
         #   WHERE rank = 1
+        #   LIMIT <limit> OFFSET <offset>
+
+        # N.B. this method will handle the limit and offset instead of passing it down the
+        # container store. This is to prevent unexpected results where the the number of
+        # results returned from this method does not match the limit provided
 
         container = self._search_container(**kwargs)
         aggregate = aggregate or self._aggregate(**kwargs)
-        return self._filter(
+        query = self._filter(
             self._rollup_query(
                 container,
                 aggregate,
@@ -129,6 +134,13 @@ class RollUpStore:
             aggregate,
             **kwargs
         )
+
+        if offset is not None:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+
+        return query
 
     def _retrieve_container(self, identifier):
         """
