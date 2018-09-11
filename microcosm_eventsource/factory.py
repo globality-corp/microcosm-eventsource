@@ -149,9 +149,12 @@ class EventFactory:
         parent_version = event_info.parent.version if event_info.parent else None
         event_info.version = event_info.event_type.next_version(parent_version)
 
-    def create_event(self, event_info, **kwargs):
+    def create_event(self, event_info, skip_publish=False, **kwargs):
         """
         Create the event and publish that it was created.
+
+        We may wish to skip event publishing in certain cases (e.g. during batch
+        event operations)
 
         If the event has a parent id, uses an upsert to handle concurrent operations
         that produce the *same* event.
@@ -171,7 +174,8 @@ class EventFactory:
 
         event_info.event = self.create_instance(event_info, instance)
 
-        self.publish_event(event_info)
+        if not skip_publish:
+            self.publish_event(event_info)
 
     def create_instance(self, event_info, instance):
         if event_info.parent is None:
