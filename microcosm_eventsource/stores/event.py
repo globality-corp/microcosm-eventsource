@@ -105,15 +105,20 @@ class EventStore(Store):
 
         return super(EventStore, self)._filter(query, **kwargs)
 
-    def _order_by(self, query, sort_by_clock=False, **kwargs):
+    def _order_by(self, query, sort_by_clock=False, sort_clock_in_ascending_order=False, **kwargs):
         """
         Order events by logical clock.
 
         """
         if sort_by_clock:
-            return query.order_by(
-                self.model_class.clock.desc(),
-            )
+            if sort_clock_in_ascending_order:
+                return query.order_by(
+                    self.model_class.clock.asc(),
+                )
+            else:
+                return query.order_by(
+                    self.model_class.clock.desc(),
+                )
         return query.order_by(
             self.model_class.container_id.desc(),
             self.model_class.clock.desc(),
