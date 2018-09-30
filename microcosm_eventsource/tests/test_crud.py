@@ -369,3 +369,29 @@ class TestTaskEventCRUDRoutes:
             media_type="application/vnd.globality.pubsub._.created.task_event",
             uri="http://localhost/api/v1/task_event/{}".format(created_event_id),
         )
+
+    def test_search_task_events_by_clock(self):
+        with SessionContext(self.graph), transaction():
+            created_event = list(islice(self.iter_events(), 4))[-1]
+            assert_that(created_event.event_type, is_(equal_to(TaskEventType.STARTED)))
+
+        descending_response = self.client.get(
+            "/api/v1/task_event?sort_by_clock=true",
+        )
+        assert_that(descending_response.status_code, is_(equal_to(200)))
+        data = loads(descending_response.data.decode("utf-8"))
+        descending_order_clock_list = [event['clock'] for event in data["items"]]
+        assert_that(descending_order_clock_list, is_(equal_to([4, 3, 2, 1])))
+
+        ascending_response = self.client.get(
+            "/api/v1/task_event?sort_by_clock=true&sort_clock_in_ascending_order=true",
+        )
+        assert_that(ascending_response.status_code, is_(equal_to(200)))
+        data = loads(ascending_response.data.decode("utf-8"))
+        ascending_order_clock_list = [event['clock'] for event in data["items"]]
+        assert_that(ascending_order_clock_list, is_(equal_to([1, 2, 3, 4])))
+
+        invalid_response = self.client.get(
+            "/api/v1/task_event?sort_clock_in_ascending_order=true",
+        )
+        assert_that(invalid_response.status_code, is_(equal_to(422)))
