@@ -18,6 +18,7 @@ setup(
     install_requires=[
         "microcosm>=2.0.0",
         "microcosm-flask>=1.0.1",
+        "microcosm-metrics>=2.1.0",
         "microcosm-logging>=1.0.0",
         "microcosm-postgres>=1.0.0",
         "microcosm-pubsub>=1.11.2",
