@@ -22,6 +22,7 @@ setup(
         "microcosm-logging>=1.0.0",
         "microcosm-postgres>=1.0.0",
         "microcosm-pubsub>=1.15.0",
+        "urllib3>=1.23,!=1.24",
     ],
     setup_requires=[
         "nose>=1.3.6",
