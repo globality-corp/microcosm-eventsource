@@ -7,6 +7,7 @@ from itertools import islice
 from json import dumps, loads
 from os import environ
 from os.path import dirname
+from unittest.mock import call, patch
 
 from hamcrest import (
     assert_that,
@@ -21,7 +22,6 @@ from microcosm.loaders import load_from_dict
 from microcosm_postgres.identifiers import new_object_id
 from microcosm_postgres.operations import recreate_all
 from microcosm_postgres.context import SessionContext, transaction
-from mock import call, patch
 
 from microcosm_eventsource.tests.fixtures import (
     Task,
