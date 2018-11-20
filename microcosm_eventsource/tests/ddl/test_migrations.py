@@ -405,7 +405,7 @@ class TestMigrations:
 
     def test_proc_events_create(self):
         """
-        Let's say we want to insert a revised event before the started event.
+        Insert a revised event before the started event and after the assigned event.
 
         """
         reassigned_event_id = new_object_id()
@@ -465,6 +465,89 @@ class TestMigrations:
                 state=[TaskEventType.STARTED],
                 id=self.started_event.id,
                 parent_id=reassigned_event_id,
+            ),
+            has_properties(
+                event_type=TaskEventType.ASSIGNED,
+                state=[TaskEventType.ASSIGNED, TaskEventType.CREATED, TaskEventType.SCHEDULED],
+                id=self.assigned_event.id,
+                parent_id=self.scheduled_event.id,
+            ),
+            has_properties(
+                event_type=TaskEventType.SCHEDULED,
+                state=[TaskEventType.CREATED, TaskEventType.SCHEDULED],
+                id=self.scheduled_event.id,
+                parent_id=self.created_event.id,
+            ),
+            has_properties(
+                event_type=TaskEventType.CREATED,
+                state=[TaskEventType.CREATED],
+                id=self.created_event.id,
+                parent_id=None,
+            ),
+        ))
+
+    def test_proc_events_create_end_event(self):
+        """
+        Insert a canceled event at the end of the event stream.
+
+        """
+        cancelled_event_id = new_object_id()
+
+        events_to_create_string = (
+            f"CREATE TEMP TABLE events_to_create AS (\n"
+            f"       SELECT\n"
+            f"          '{cancelled_event_id}'::uuid as id,\n"
+            f"          extract(epoch from now()) as created_at,\n"
+            f"          extract(epoch from now()) as updated_at,\n"
+            f"          assignee,\n"
+            f"          NULL::timestamp without time zone as deadline,\n"
+            f"          task_id,\n"
+            f"          'CANCELED' as event_type,\n"
+            f"          id as parent_id,\n"
+            f"          '{{\"CANCELED\"}}'::character varying[] as state,\n"
+            f"          1 as version\n"
+            f"       FROM task_event WHERE event_type='STARTED'\n"
+            f"    );"
+        )
+
+        self.activity_store.session.execute(events_to_create_string)
+
+        self.activity_store.session.execute("""
+            SELECT proc_events_create(
+                'task_event',
+                'events_to_create',
+                '(
+                    id,
+                    created_at,
+                    updated_at,
+                    assignee,
+                    deadline,
+                    task_id,
+                    event_type,
+                    parent_id,
+                    state,
+                    version
+                )'
+            );
+        """)
+        results = self.store.search()
+        assert_that(results, has_length(5))
+
+        # NB: The events appear out of order because they are sorted by clock,
+        # but the parent id chain is correct. In particular the parent of the
+        # STARTED event has been changed by the migration
+        assert_that(results, contains(
+            has_properties(
+                event_type=TaskEventType.CANCELED,
+                state=[TaskEventType.CANCELED],
+                parent_id=self.started_event.id,
+                id=cancelled_event_id,
+            ),
+            has_properties(
+                event_type=TaskEventType.STARTED,
+                state=[TaskEventType.STARTED],
+                id=self.started_event.id,
+                parent_id=self.assigned_event.id,
             ),
             has_properties(
                 event_type=TaskEventType.ASSIGNED,

@@ -6,6 +6,7 @@
  * Pass the events to create as row from table events_to_create_table_name.
  * Must pass model_id_row_name - the row name that links to the parent model
  * Must pass the listen of expected columns to be inserted into the target event table.
+ * Note: Events to create must not be initial events.
  * (Example: for company_event table, the model_id_row_name should be company_id)
  *
  * Example:
