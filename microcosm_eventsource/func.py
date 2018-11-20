@@ -21,6 +21,7 @@ listen(
     "after_create",
     DDL(
         load_ddl("array_sort_unique", "create") +
+        load_ddl("proc_events_create", "create") +
         load_ddl("proc_events_delete", "create") +
         load_ddl("proc_event_type_delete", "create") +
         load_ddl("last_agg_sfunc", "create") +
@@ -33,6 +34,7 @@ listen(
     "after_drop",
     DDL(
         load_ddl("array_sort_unique", "drop") +
+        load_ddl("proc_events_create", "drop") +
         load_ddl("proc_events_delete", "drop") +
         load_ddl("proc_event_type_delete", "drop") +
         load_ddl("last_agg", "drop") +
