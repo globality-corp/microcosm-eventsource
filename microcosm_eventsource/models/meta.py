@@ -14,13 +14,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy_utils import UUIDType
+from typing import Any
 
 from microcosm_eventsource.models.alias import ColumnAlias
 from microcosm_eventsource.models.base import BaseEvent
 
 
 # preserve the SQLAlchemy metaclass
-MetaClass = type(Model)
+MetaClass: Any = type(Model)
 
 
 def default_state(context):
