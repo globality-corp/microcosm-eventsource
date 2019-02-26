@@ -2,6 +2,7 @@
 Event store.
 
 """
+from microcosm_postgres.models import Model
 from microcosm_postgres.store import Store
 from sqlalchemy.dialects.postgresql import insert
 
@@ -60,6 +61,10 @@ class EventStore(Store):
             upsert_statement = insert_statement.on_conflict_do_nothing(
                 index_elements=self.upsert_index_elements(),
             )
+            for member in instance.__dict__.values():
+                if isinstance(member, Model):
+                    self.session.add(member)
+
             self.session.execute(upsert_statement)
 
         most_recent = self._retrieve_most_recent(

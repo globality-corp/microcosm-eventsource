@@ -1,8 +1,9 @@
 {
-  "type": "python-library",
   "params": {
-    "name": "microcosm-eventsource",
     "app_name": "example",
-    "database": "postgres"
-  }
+    "database": "postgres",
+    "name": "microcosm-eventsource"
+  },
+  "type": "python-library",
+  "version": "2.0.36"
 }
