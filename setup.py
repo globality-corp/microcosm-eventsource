@@ -17,11 +17,11 @@ setup(
     python_requires=">=3.6",
     keywords="microcosm",
     install_requires=[
-        "microcosm>=2.0.0",
-        "microcosm-flask>=1.0.1",
-        "microcosm-logging>=1.0.0",
-        "microcosm-postgres>=1.0.0",
-        "microcosm-pubsub>=1.15.0",
+        "microcosm>=2.6.0",
+        "microcosm-flask>=1.20.0",
+        "microcosm-logging>=1.5.0",
+        "microcosm-postgres>=1.14.0",
+        "microcosm-pubsub>=1.20.0",
         "urllib3>=1.23,!=1.24",
     ],
     setup_requires=[
