@@ -131,6 +131,19 @@ class TestRolledUpEventStore:
             ),
         ))
 
+    def test_search_first(self):
+        rollup = self.store.search_first()
+        assert_that(rollup, has_properties(
+            _event=self.task2_started_event,
+            _container=self.task2,
+            _rank=1,
+            _assignee="Alice",
+        ))
+
+    def test_search_first_without_response(self):
+        rollup = self.store.search_first(asignee="Julio")
+        assert_that(rollup, is_(equal_to(None)))
+
     def test_filter(self):
         results = self.store.search(asignee="Alice")
         assert_that(results, has_length(1))
