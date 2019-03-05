@@ -5,18 +5,14 @@ from microcosm.api import create_object_graph
 from microcosm_postgres.context import SessionContext, transaction
 
 from microcosm_eventsource.func import last
-from microcosm_eventsource.tests.fixtures import (
-    Task,
-    TaskEvent,
-    TaskEventType,
-)
+from microcosm_eventsource.tests.fixtures import Task, TaskEvent, TaskEventType
 
 
 class TestLast:
 
     def setup(self):
         self.graph = create_object_graph(
-            "example",
+            "microcosm_eventsource",
             root_path=dirname(__file__),
             testing=True,
         )

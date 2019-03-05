@@ -1,19 +1,13 @@
-from hamcrest import (
-    assert_that,
-    has_properties,
-)
 from os import pardir
 from os.path import dirname, join
+
+from hamcrest import assert_that, has_properties
 from microcosm.api import create_object_graph
 from microcosm_postgres.context import SessionContext, transaction
 
 from microcosm_eventsource.func import last
 from microcosm_eventsource.stores import RollUpStore
-from microcosm_eventsource.tests.fixtures import (
-    SubTask,
-    SubTaskEvent,
-    SubTaskEventType,
-)
+from microcosm_eventsource.tests.fixtures import SubTask, SubTaskEvent, SubTaskEventType
 
 
 class SubTaskRollUpStore(RollUpStore):
@@ -37,7 +31,7 @@ class TestPolymorphicEntityRolledUpEventStore:
 
     def setup(self):
         self.graph = create_object_graph(
-            "example",
+            "microcosm_eventsource",
             root_path=join(dirname(__file__), pardir),
             testing=True,
         )

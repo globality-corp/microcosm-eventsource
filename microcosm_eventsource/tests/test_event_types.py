@@ -2,10 +2,18 @@
 Event type tests.
 
 """
-from hamcrest import assert_that, calling, contains, contains_inanyorder, equal_to, is_, raises
+from hamcrest import (
+    assert_that,
+    calling,
+    contains,
+    contains_inanyorder,
+    equal_to,
+    is_,
+    raises,
+)
 
-from microcosm_eventsource.tests.fixtures import TaskEventType, FlexibleTaskEventType
-from microcosm_eventsource.event_types import event_info, EventType
+from microcosm_eventsource.event_types import EventType, event_info
+from microcosm_eventsource.tests.fixtures import FlexibleTaskEventType, TaskEventType
 from microcosm_eventsource.transitioning import event
 
 
