@@ -14,7 +14,7 @@
 defaults: &defaults
   working_directory: ~/repo
   docker:
-    - image: ${AWS_ECR_DOMAIN}/globality-build:2.0.0
+    - image: ${AWS_ECR_DOMAIN}/globality-build:2019.1.2284
       aws_auth:
         aws_access_key_id: ${AWS_ACCESS_KEY_ID}
         aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
@@ -28,7 +28,7 @@ defaults: &defaults
 deploy_defaults: &deploy_defaults
   working_directory: ~/repo
   docker:
-    - image: ${AWS_ECR_DOMAIN}/globality-build:2.0.0
+    - image: ${AWS_ECR_DOMAIN}/globality-build:2019.1.2284
       aws_auth:
         aws_access_key_id: ${AWS_ACCESS_KEY_ID}
         aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
@@ -82,10 +82,10 @@ jobs:
 
       - setup_remote_docker
       - run:
-          name: pull and run database
+          name: pull and run database - postgres
           command: |
             docker pull postgres
-            docker run -d --name microcosm_eventsource_db -e POSTGRES_DB=example_test_db -e POSTGRES_USER=example postgres
+            docker run -d --name microcosm_eventsource_db -e POSTGRES_DB=microcosm_eventsource_test_db -e POSTGRES_USER=microcosm_eventsource postgres
       - run:
           name: Test code
           command: |
@@ -93,8 +93,7 @@ jobs:
             docker cp $(pwd)/microcosm_eventsource/tests service_tests:/src/microcosm_eventsource/
             eval $(aws ecr get-login --no-include-email)
             docker pull ${AWS_ECR_DOMAIN}/python-library:${CIRCLE_SHA1}
-            docker run -it  --link microcosm_eventsource_db:postgres -e EXAMPLE__POSTGRES__HOST=postgres --volumes-from service_tests ${AWS_ECR_DOMAIN}/python-library:${CIRCLE_SHA1} test
-
+            docker run -it  --link microcosm_eventsource_db:postgres -e MICROCOSM_EVENTSOURCE__POSTGRES__HOST=postgres --volumes-from service_tests ${AWS_ECR_DOMAIN}/python-library:${CIRCLE_SHA1} test
   lint:
     <<: *defaults
 
@@ -113,7 +112,6 @@ jobs:
             docker pull ${AWS_ECR_DOMAIN}/python-library:${CIRCLE_SHA1}
             docker run -it --volumes-from service_tests ${AWS_ECR_DOMAIN}/python-library:${CIRCLE_SHA1} lint
 
-
   typehinting:
     <<: *defaults
 
@@ -131,7 +129,6 @@ jobs:
             eval $(aws ecr get-login --no-include-email)
             docker pull ${AWS_ECR_DOMAIN}/python-library:${CIRCLE_SHA1}
             docker run -it --volumes-from service_tests ${AWS_ECR_DOMAIN}/python-library:${CIRCLE_SHA1} typehinting
-
   deploy_pypi:
     <<: *defaults
     steps:
@@ -200,4 +197,5 @@ workflows:
               ignore: /.*/
             tags:
               only: /^[0-9]+(\.[0-9]+)*/
+
 

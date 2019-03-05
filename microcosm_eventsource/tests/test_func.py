@@ -16,7 +16,7 @@ class TestLast:
 
     def setup(self):
         self.graph = create_object_graph(
-            "example",
+            "microcosm_eventsource",
             root_path=dirname(__file__),
             testing=True,
         )

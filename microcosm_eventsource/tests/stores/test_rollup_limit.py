@@ -51,7 +51,7 @@ class TestRolledUpEventStore:
 
     def setup(self):
         self.graph = create_object_graph(
-            "example",
+            "microcosm_eventsource",
             root_path=join(dirname(__file__), pardir),
             testing=True,
         )
