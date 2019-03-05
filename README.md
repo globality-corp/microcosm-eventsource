@@ -133,3 +133,9 @@ Example:
         COMPLETED = event_info(
             follows=event("STARTED"),
         )
+
+
+### Running tests
+
+'microcosm-evensource' required a db user named 'microcosm_eventsource' and a db named 'microcosm_eventsource_test_db' - create both and run tests using `nosetests`
+

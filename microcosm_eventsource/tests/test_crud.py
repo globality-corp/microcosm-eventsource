@@ -46,7 +46,7 @@ class TestTaskEventCRUDRoutes:
             ),
         )
         self.graph = create_object_graph(
-            "example",
+            "microcosm_eventsource",
             loader=loader,
             root_path=dirname(__file__),
             testing=True,
