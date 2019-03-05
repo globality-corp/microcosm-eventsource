@@ -5,10 +5,10 @@ Custom database functions.
 from pkg_resources import resource_string
 
 from microcosm_postgres.models import Model
-from sqlalchemy.sql.expression import FunctionElement
-from sqlalchemy.ext.compiler import compiles
 from sqlalchemy import DDL, func
 from sqlalchemy.event import listen
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.expression import FunctionElement
 
 
 def load_ddl(name, action):

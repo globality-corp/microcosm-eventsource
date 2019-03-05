@@ -5,6 +5,7 @@ Persistence tests.
 from datetime import datetime
 from os import pardir
 from os.path import dirname, join
+
 from hamcrest import (
     assert_that,
     calling,
@@ -16,15 +17,15 @@ from hamcrest import (
 from microcosm.api import create_object_graph
 from microcosm_postgres.context import SessionContext, transaction
 from microcosm_postgres.identifiers import new_object_id
-from sqlalchemy.exc import ProgrammingError, IntegrityError
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 from microcosm_eventsource.tests.fixtures import (
-    Task,
-    TaskEvent,
-    TaskEventType,
     Activity,
     ActivityEvent,
     ActivityEventType,
+    Task,
+    TaskEvent,
+    TaskEventType,
 )
 
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from setuptools import find_packages, setup
 
+
 project = "microcosm-eventsource"
 version = "1.12.0"
 

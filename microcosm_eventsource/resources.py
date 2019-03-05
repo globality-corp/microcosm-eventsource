@@ -2,7 +2,12 @@
 Event resources.
 
 """
-from marshmallow import fields, Schema, validates_schema, ValidationError
+from marshmallow import (
+    Schema,
+    ValidationError,
+    fields,
+    validates_schema,
+)
 from microcosm_flask.paging import PageSchema
 
 

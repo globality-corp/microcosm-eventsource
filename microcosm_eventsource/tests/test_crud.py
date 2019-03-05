@@ -12,22 +12,18 @@ from unittest.mock import call, patch
 from hamcrest import (
     assert_that,
     contains,
-    has_entry,
     equal_to,
+    has_entry,
     is_,
     none,
 )
 from microcosm.api import create_object_graph
 from microcosm.loaders import load_from_dict
+from microcosm_postgres.context import SessionContext, transaction
 from microcosm_postgres.identifiers import new_object_id
 from microcosm_postgres.operations import recreate_all
-from microcosm_postgres.context import SessionContext, transaction
 
-from microcosm_eventsource.tests.fixtures import (
-    Task,
-    TaskEvent,
-    TaskEventType,
-)
+from microcosm_eventsource.tests.fixtures import Task, TaskEvent, TaskEventType
 
 
 class TestTaskEventCRUDRoutes:

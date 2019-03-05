@@ -5,11 +5,7 @@ from microcosm.api import create_object_graph
 from microcosm_postgres.context import SessionContext, transaction
 
 from microcosm_eventsource.func import last
-from microcosm_eventsource.tests.fixtures import (
-    Task,
-    TaskEvent,
-    TaskEventType,
-)
+from microcosm_eventsource.tests.fixtures import Task, TaskEvent, TaskEventType
 
 
 class TestLast:

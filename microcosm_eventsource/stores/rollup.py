@@ -2,13 +2,13 @@
 Rolled up event store.
 
 """
+from microcosm_postgres.context import SessionContext
+from microcosm_postgres.errors import ModelNotFoundError
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import NoResultFound
 
 from microcosm_eventsource.func import ranked
 from microcosm_eventsource.models.rollup import RollUp
-from microcosm_postgres.context import SessionContext
-from microcosm_postgres.errors import ModelNotFoundError
 
 
 class RollUpStore:

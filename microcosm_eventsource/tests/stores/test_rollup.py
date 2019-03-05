@@ -22,11 +22,7 @@ from microcosm_postgres.identifiers import new_object_id
 
 from microcosm_eventsource.func import last
 from microcosm_eventsource.stores import RollUpStore
-from microcosm_eventsource.tests.fixtures import (
-    Task,
-    TaskEvent,
-    TaskEventType,
-)
+from microcosm_eventsource.tests.fixtures import Task, TaskEvent, TaskEventType
 
 
 class TaskRollUpStore(RollUpStore):

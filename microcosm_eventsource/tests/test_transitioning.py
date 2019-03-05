@@ -2,8 +2,9 @@
 Test transition functions.
 
 """
-from hamcrest import assert_that, is_, equal_to
+from hamcrest import assert_that, equal_to, is_
 
+from microcosm_eventsource.tests.fixtures import TaskEventType
 from microcosm_eventsource.transitioning import (
     all_of,
     any_of,
@@ -11,7 +12,6 @@ from microcosm_eventsource.transitioning import (
     event,
     nothing,
 )
-from microcosm_eventsource.tests.fixtures import TaskEventType
 
 
 def test_any_of():

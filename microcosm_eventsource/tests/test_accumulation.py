@@ -9,8 +9,8 @@ from microcosm_eventsource.accumulation import (
     alias,
     compose,
     current,
-    keep,
     difference,
+    keep,
     union,
 )
 from microcosm_eventsource.tests.fixtures import TaskEventType

@@ -22,12 +22,12 @@ from microcosm_postgres.errors import DuplicateModelError, ModelIntegrityError
 
 from microcosm_eventsource.errors import ConcurrentStateConflictError
 from microcosm_eventsource.tests.fixtures import (
-    Task,
-    TaskEvent,
-    TaskEventType,
     Activity,
     ActivityEvent,
     ActivityEventType,
+    Task,
+    TaskEvent,
+    TaskEventType,
 )
 
 
