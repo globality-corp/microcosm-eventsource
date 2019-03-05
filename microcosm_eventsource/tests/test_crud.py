@@ -31,11 +31,11 @@ class TestTaskEventCRUDRoutes:
         loader = load_from_dict(
             secret=dict(
                 postgres=dict(
-                    host=environ.get("EXAMPLE__POSTGRES__HOST", "localhost"),
+                    host=environ.get("MICROCOSM_EVENTSOURCE__POSTGRES__HOST", "localhost"),
                 ),
             ),
             postgres=dict(
-                host=environ.get("EXAMPLE__POSTGRES__HOST", "localhost"),
+                host=environ.get("MICROCOSM_EVENTSOURCE__POSTGRES__HOST", "localhost"),
             ),
             sns_producer=dict(
                 mock_sns=False,
