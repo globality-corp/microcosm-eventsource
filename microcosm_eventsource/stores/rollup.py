@@ -2,13 +2,13 @@
 Rolled up event store.
 
 """
+from microcosm_postgres.context import SessionContext
+from microcosm_postgres.errors import ModelNotFoundError
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import NoResultFound
 
 from microcosm_eventsource.func import ranked
 from microcosm_eventsource.models.rollup import RollUp
-from microcosm_postgres.context import SessionContext
-from microcosm_postgres.errors import ModelNotFoundError
 
 
 class RollUpStore:
@@ -87,6 +87,12 @@ class RollUpStore:
             self._to_model(aggregate, *row)
             for row in self._search_query(aggregate, **kwargs).all()
         ]
+
+    def search_first(self, **kwargs):
+        results = self.search(**kwargs)
+        if results:
+            return results[0]
+        return None
 
     def _search_query(self, aggregate=None, limit=None, offset=None, **kwargs):
         """

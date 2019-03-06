@@ -133,3 +133,24 @@ Example:
         COMPLETED = event_info(
             follows=event("STARTED"),
         )
+
+
+### Running tests
+
+First, create role and DB:
+
+```
+createuser microcosm_eventsource
+createdb -O microcosm_eventsource microcosm_eventsource_test_db
+
+```
+
+Second, install nose:
+
+```
+pip install nose pyhamcrest
+
+```
+
+Then, run `nosetests`
+

@@ -20,11 +20,8 @@ this accumulated `state` and the current event:
 from enum import Enum
 from itertools import chain
 
-from microcosm_eventsource.errors import (
-    IllegalInitialStateError,
-    IllegalStateTransitionError,
-)
 from microcosm_eventsource.accumulation import current
+from microcosm_eventsource.errors import IllegalInitialStateError, IllegalStateTransitionError
 from microcosm_eventsource.transitioning import nothing
 
 

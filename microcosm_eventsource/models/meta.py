@@ -2,6 +2,8 @@
 Metaclass for new event types.
 
 """
+from typing import Any
+
 from microcosm_postgres.models import Model
 from microcosm_postgres.types import EnumType, Serial
 from sqlalchemy import (
@@ -14,7 +16,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy_utils import UUIDType
-from typing import Any
 
 from microcosm_eventsource.models.alias import ColumnAlias
 from microcosm_eventsource.models.base import BaseEvent

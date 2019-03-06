@@ -22,12 +22,12 @@ from microcosm_postgres.errors import DuplicateModelError, ModelIntegrityError
 
 from microcosm_eventsource.errors import ConcurrentStateConflictError
 from microcosm_eventsource.tests.fixtures import (
-    Task,
-    TaskEvent,
-    TaskEventType,
     Activity,
     ActivityEvent,
     ActivityEventType,
+    Task,
+    TaskEvent,
+    TaskEventType,
 )
 
 
@@ -35,7 +35,7 @@ class TestEventStore:
 
     def setup(self):
         self.graph = create_object_graph(
-            "example",
+            "microcosm_eventsource",
             root_path=join(dirname(__file__), pardir),
             testing=True,
         )

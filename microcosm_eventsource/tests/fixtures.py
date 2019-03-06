@@ -4,7 +4,7 @@ Test fixtures.
 """
 from enum import Enum
 
-from marshmallow import fields, Schema
+from marshmallow import Schema, fields
 from microcosm.api import binding
 from microcosm_flask.fields import EnumField
 from microcosm_flask.namespaces import Namespace
@@ -12,18 +12,30 @@ from microcosm_flask.session import register_session_factory
 from microcosm_postgres.context import SessionContext
 from microcosm_postgres.models import EntityMixin, Model, UnixTimestampEntityMixin
 from microcosm_postgres.store import Store
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+)
 from sqlalchemy_utils import UUIDType
 
 from microcosm_eventsource.accumulation import alias, keep, union
 from microcosm_eventsource.controllers import EventController
-from microcosm_eventsource.transitioning import all_of, any_of, but_not, event, nothing
-from microcosm_eventsource.event_types import event_info, EventType, EventTypeUnion
+from microcosm_eventsource.event_types import EventType, EventTypeUnion, event_info
 from microcosm_eventsource.factory import EventFactory
 from microcosm_eventsource.models import EventMeta
 from microcosm_eventsource.resources import EventSchema, SearchEventSchema
 from microcosm_eventsource.routes import configure_event_crud
 from microcosm_eventsource.stores import EventStore
+from microcosm_eventsource.transitioning import (
+    all_of,
+    any_of,
+    but_not,
+    event,
+    nothing,
+)
 
 
 class SimpleTestObjectEventType(EventType):
