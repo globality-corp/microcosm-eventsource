@@ -88,6 +88,12 @@ class RollUpStore:
             for row in self._search_query(aggregate, **kwargs).all()
         ]
 
+    def search_first(self, **kwargs):
+        results = self.search(**kwargs)
+        if results:
+            return results[0]
+        return None
+
     def _search_query(self, aggregate=None, limit=None, offset=None, **kwargs):
         """
         Create the query for a rolled-up search of containers by their most recent event.
