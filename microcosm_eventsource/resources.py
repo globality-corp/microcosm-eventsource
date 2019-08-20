@@ -41,8 +41,8 @@ class SearchEventSchema(PageSchema):
     version = fields.Integer()
 
     @validates_schema
-    def validate(self, sort_clock_in_ascending_order=None, sort_by_clock=None, *kwargs):
-        if sort_clock_in_ascending_order and not sort_by_clock:
+    def validate(self, obj, **kwargs):
+        if obj.get("sort_clock_in_ascending_order") and not obj.get("sort_by_clock"):
             raise ValidationError(
                 "sort_by_clock must be set if sort_clock_in_ascending_order is set",
                 field_names=[
