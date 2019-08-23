@@ -29,11 +29,6 @@ class EventSchema(Schema):
         required=False,
         allow_none=True,
     )
-    updatedTimestamp = fields.Float(
-        attribute="created_timestamp",
-        required=True,
-        allow_none=True,
-    )
 
 
 class SearchEventSchema(PageSchema):
@@ -46,7 +41,7 @@ class SearchEventSchema(PageSchema):
     version = fields.Integer()
 
     @validates_schema
-    def validate(self, obj):
+    def validate(self, obj, **kwargs):
         if obj.get("sort_clock_in_ascending_order") and not obj.get("sort_by_clock"):
             raise ValidationError(
                 "sort_by_clock must be set if sort_clock_in_ascending_order is set",

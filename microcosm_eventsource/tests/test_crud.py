@@ -117,7 +117,6 @@ class TestTaskEventCRUDRoutes:
                 data=dumps(dict(
                     taskId=str(self.task.id),
                     eventType=TaskEventType.CREATED.name,
-                    parentId=str(self.task.id),
                 )),
             )
         assert_that(response.status_code, is_(equal_to(201)))
@@ -357,7 +356,6 @@ class TestTaskEventCRUDRoutes:
                     data=dumps(dict(
                         taskId=str(self.task.id),
                         eventType=TaskEventType.CREATED.name,
-                        parentId=str(self.task.id),
                     )),
                 )
         assert_that(response.status_code, is_(equal_to(201)))
