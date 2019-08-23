@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 
 
 project = "microcosm-eventsource"
-version = "1.14.0"
+version = "2.0.0"
 
 setup(
     name=project,
@@ -19,10 +19,10 @@ setup(
     keywords="microcosm",
     install_requires=[
         "microcosm>=2.12.0",
-        "microcosm-flask>=1.20.0",
+        "microcosm-flask>=2.0.0",
         "microcosm-logging>=1.5.0",
         "microcosm-postgres>=1.14.0",
-        "microcosm-pubsub>=1.20.0",
+        "microcosm-pubsub>=2.0.0",
     ],
     setup_requires=[
         "nose>=1.3.6",
