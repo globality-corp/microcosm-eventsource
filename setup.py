@@ -22,7 +22,7 @@ setup(
         "microcosm-flask>=2.0.0",
         "microcosm-logging>=1.5.0",
         "microcosm-postgres>=1.14.0",
-        "microcosm-pubsub>=2.0.0",
+        "microcosm-pubsub>=2.4.1",
     ],
     setup_requires=[
         "nose>=1.3.6",
