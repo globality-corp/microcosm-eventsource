@@ -2,11 +2,13 @@
 Event store.
 
 """
+import psycopg2
 from microcosm_postgres.models import Model
 from microcosm_postgres.store import Store
 from sqlalchemy.dialects.postgresql import insert
 
-from microcosm_eventsource.errors import ConcurrentStateConflictError
+from microcosm_eventsource.errors import ConcurrentStateConflictError, ContainerLockNotAvailableRetry
+from sqlalchemy.exc import OperationalError
 
 
 class EventStore(Store):
@@ -34,6 +36,24 @@ class EventStore(Store):
             self.model_class.container_id == container_id,
             self.model_class.event_type == event_type,
         )
+
+    def retrieve_most_recent_with_update_lock(self, **kwargs):
+        """
+        Retrieve the most recent by container id, while taking a ON UPDATE lock with NOWAIT OPTION.
+        If another instance of event is being processed simultaneously, it would raise LockNotAvailable error.
+        This method it to serialize event sourcing, if they are processing the same container instance.
+
+        """
+        container_id = kwargs.pop(self.model_class.container_id_name)
+        try:
+            return self._retrieve_most_recent(
+                self.model_class.container_id == container_id,
+                for_update=True
+            )
+        except OperationalError as exc:
+            if isinstance(exc.orig, psycopg2.errors.LockNotAvailable):
+                raise ContainerLockNotAvailableRetry()
+            raise
 
     def upsert_index_elements(self):
         """
@@ -129,13 +149,17 @@ class EventStore(Store):
             self.model_class.clock.desc(),
         )
 
-    def _retrieve_most_recent(self, *criterion):
+    def _retrieve_most_recent(self, *criterion, for_update=False):
         """
         Retrieve the most recent event by some criterion.
 
         Note that the default `_order_by` enforces clock ordering.
 
         """
-        return self._order_by(self._query(
+        query = self._order_by(self._query(
             *criterion
-        )).first()
+        ))
+        if for_update:
+            return query.with_for_update(nowait=True).first()
+        else:
+            return query.first()
