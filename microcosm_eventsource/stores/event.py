@@ -6,9 +6,12 @@ import psycopg2
 from microcosm_postgres.models import Model
 from microcosm_postgres.store import Store
 from sqlalchemy.dialects.postgresql import insert
-
-from microcosm_eventsource.errors import ConcurrentStateConflictError, ContainerLockNotAvailableRetry
 from sqlalchemy.exc import OperationalError
+
+from microcosm_eventsource.errors import (
+    ConcurrentStateConflictError,
+    ContainerLockNotAvailableRetry,
+)
 
 
 class EventStore(Store):
