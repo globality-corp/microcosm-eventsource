@@ -4,7 +4,9 @@ Persistence tests.
 """
 from os import pardir
 from os.path import dirname, join
+from unittest.mock import patch
 
+import psycopg2
 from hamcrest import (
     assert_that,
     calling,
@@ -19,8 +21,13 @@ from hamcrest import (
 from microcosm.api import create_object_graph
 from microcosm_postgres.context import SessionContext, transaction
 from microcosm_postgres.errors import DuplicateModelError, ModelIntegrityError
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Query
 
-from microcosm_eventsource.errors import ConcurrentStateConflictError
+from microcosm_eventsource.errors import (
+    ConcurrentStateConflictError,
+    ContainerLockNotAvailableRetry,
+)
 from microcosm_eventsource.tests.fixtures import (
     Activity,
     ActivityEvent,
@@ -261,3 +268,43 @@ class TestEventStore:
             self.store.create(same_parent_task_event)
 
         assert_that(same_parent_task_event.parent_id, is_(created_event.id))
+
+    def test_retrieve_with_update_lock(self):
+        with transaction():
+            created_event = TaskEvent(
+                event_type=TaskEventType.CREATED,
+                task_id=self.task.id,
+            )
+            self.store.create(created_event)
+        assert_that(
+            self.store.retrieve_most_recent_with_update_lock(task_id=self.task.id),
+            is_(equal_to(created_event)),
+        )
+
+    def test_retrieve_with_update_lock_exception(self):
+        with transaction():
+            created_event = TaskEvent(
+                event_type=TaskEventType.CREATED,
+                task_id=self.task.id,
+            )
+            self.store.create(created_event)
+
+        with patch.object(Query, 'with_for_update') as mocked_with_for_update:
+            mocked_with_for_update.side_effect = OperationalError(
+                statement="", params="",
+                orig=psycopg2.errors.LockNotAvailable())
+
+            assert_that(
+                calling(self.store.retrieve_most_recent_with_update_lock).with_args(
+                    task_id=self.task.id,
+                ), raises(ContainerLockNotAvailableRetry),
+            )
+
+        with patch.object(Query, 'with_for_update') as mocked_with_for_update:
+            mocked_with_for_update.side_effect = Exception()
+
+            assert_that(
+                calling(self.store.retrieve_most_recent_with_update_lock).with_args(
+                    task_id=self.task.id,
+                ), raises(Exception),
+            )
