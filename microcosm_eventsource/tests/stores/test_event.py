@@ -59,11 +59,10 @@ class TestEventStore:
         self.context.recreate_all()
         self.context.open()
 
-        with transaction() as tx:
+        with transaction() as session:
             self.task = Task().create()
 
-            seq = Sequence("task_event_clock_seq")
-            self.offset = tx.execute(seq)
+            self.offset = session.execute(Sequence("task_event_clock_seq"))
 
     def teardown(self):
         self.context.close()

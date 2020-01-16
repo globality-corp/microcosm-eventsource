@@ -58,12 +58,11 @@ class TestTaskEventCRUDRoutes:
         self.client = self.graph.flask.test_client()
         recreate_all(self.graph)
 
-        with SessionContext(self.graph), transaction() as tx:
+        with SessionContext(self.graph), transaction() as session:
             self.task = Task().create()
             self.graph.sns_producer.sns_client.reset_mock()
 
-            seq = Sequence("task_event_clock_seq")
-            self.offset = tx.execute(seq)
+            self.offset = session.execute(Sequence("task_event_clock_seq"))
 
     def iter_events(self):
         """
