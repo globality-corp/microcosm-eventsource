@@ -4,6 +4,7 @@ Rolled up event store.
 """
 from microcosm_postgres.context import SessionContext
 from microcosm_postgres.errors import ModelNotFoundError
+from microcosm_postgres.metrics import postgres_metric_timing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -23,6 +24,16 @@ class RollUpStore:
         return self.rollup
 
     @property
+    def model_name(self):
+        return self.model_class.__name__ if self.model_class else None
+
+    @property
+    def postgres_store_metrics(self):
+        # Rollup store is unable to reference graph directly, so accessing it via container_store
+        # Assumption is that container_store(type Store) will always have access to graph.
+        return self.container_store.graph.postgres_store_metrics
+
+    @property
     def container_type(self):
         return self.container_store.model_class
 
@@ -30,6 +41,7 @@ class RollUpStore:
     def event_type(self):
         return self.event_store.model_class
 
+    @postgres_metric_timing(action="retrieve")
     def retrieve(self, identifier):
         """
         Retrieve a single rolled-up event.
@@ -57,6 +69,7 @@ class RollUpStore:
                 error,
             )
 
+    @postgres_metric_timing(action="count")
     def count(self, **kwargs):
         """
         Query the number of possible rolled-up rows.
@@ -68,6 +81,7 @@ class RollUpStore:
         """
         return self.container_store.count(**kwargs)
 
+    @postgres_metric_timing(action="exact_count")
     def exact_count(self, **kwargs):
         """
         Query the number of possible rolled-up rows.
@@ -77,6 +91,7 @@ class RollUpStore:
         """
         return self._search_query(**kwargs).count()
 
+    @postgres_metric_timing(action="search")
     def search(self, **kwargs):
         """
         Implement a rolled-up search of containers by their most recent event.
@@ -88,6 +103,7 @@ class RollUpStore:
             for row in self._search_query(aggregate, **kwargs).all()
         ]
 
+    @postgres_metric_timing(action="search_first")
     def search_first(self, **kwargs):
         results = self.search(**kwargs)
         if results:
