@@ -22,6 +22,7 @@ from microcosm.loaders import load_from_dict
 from microcosm_postgres.context import SessionContext, transaction
 from microcosm_postgres.identifiers import new_object_id
 from microcosm_postgres.operations import recreate_all
+from sqlalchemy.sql.schema import Sequence
 
 from microcosm_eventsource.tests.fixtures import Task, TaskEvent, TaskEventType
 
@@ -57,9 +58,12 @@ class TestTaskEventCRUDRoutes:
         self.client = self.graph.flask.test_client()
         recreate_all(self.graph)
 
-        with SessionContext(self.graph), transaction():
+        with SessionContext(self.graph), transaction() as tx:
             self.task = Task().create()
             self.graph.sns_producer.sns_client.reset_mock()
+
+            seq = Sequence("task_event_clock_seq")
+            self.offset = tx.execute(seq)
 
     def iter_events(self):
         """
@@ -124,7 +128,7 @@ class TestTaskEventCRUDRoutes:
         data = loads(response.data.decode("utf-8"))
         assert_that(data, has_entry("id", str(created_event_id)))
         assert_that(data, has_entry("taskId", str(self.task.id)))
-        assert_that(data, has_entry("clock", 1))
+        assert_that(data, has_entry("clock", 1 + self.offset))
         assert_that(data, has_entry("parentId", none()))
 
         self.graph.sns_producer.produce.assert_called_with(
@@ -157,7 +161,7 @@ class TestTaskEventCRUDRoutes:
         data = loads(response.data.decode("utf-8"))
         assert_that(data, has_entry("id", str(assigned_event_id)))
         assert_that(data, has_entry("taskId", str(self.task.id)))
-        assert_that(data, has_entry("clock", 2))
+        assert_that(data, has_entry("clock", 2 + self.offset))
         assert_that(data, has_entry("parentId", str(created_event.id)))
         assert_that(data, has_entry("version", 1))
 
@@ -200,7 +204,7 @@ class TestTaskEventCRUDRoutes:
 
         data = loads(response.data.decode("utf-8"))
         assert_that(data, has_entry("taskId", str(self.task.id)))
-        assert_that(data, has_entry("clock", 4))
+        assert_that(data, has_entry("clock", 4 + self.offset))
         assert_that(data, has_entry("parentId", str(scheduled_event.id)))
         assert_that(data, has_entry("version", 1))
 
@@ -231,7 +235,7 @@ class TestTaskEventCRUDRoutes:
         data = loads(response.data.decode("utf-8"))
         assert_that(data, has_entry("assignee", "Bob"))
         assert_that(data, has_entry("taskId", str(self.task.id)))
-        assert_that(data, has_entry("clock", 5))
+        assert_that(data, has_entry("clock", 5 + self.offset))
         assert_that(data, has_entry("parentId", str(started_event.id)))
         assert_that(data, has_entry("version", 1))
 
@@ -262,7 +266,7 @@ class TestTaskEventCRUDRoutes:
         data = loads(response.data.decode("utf-8"))
         assert_that(data, has_entry("assignee", "Alice"))
         assert_that(data, has_entry("taskId", str(self.task.id)))
-        assert_that(data, has_entry("clock", 6))
+        assert_that(data, has_entry("clock", 6 + self.offset))
         assert_that(data, has_entry("parentId", str(reassigned_event.id)))
         assert_that(data, has_entry("version", 1))
 
@@ -291,7 +295,7 @@ class TestTaskEventCRUDRoutes:
 
         data = loads(response.data.decode("utf-8"))
         assert_that(data, has_entry("taskId", str(self.task.id)))
-        assert_that(data, has_entry("clock", 5))
+        assert_that(data, has_entry("clock", 5 + self.offset))
         assert_that(data, has_entry("parentId", str(reassigned_event.id)))
         assert_that(data, has_entry("version", 2))
 
@@ -324,10 +328,10 @@ class TestTaskEventCRUDRoutes:
         with SessionContext(self.graph), transaction():
             completed_task_event = self.graph.task_event_store.retrieve(data["id"])
             assert_that(completed_task_event.event_type, is_(TaskEventType.COMPLETED))
-            assert_that(completed_task_event.clock, is_(5))
+            assert_that(completed_task_event.clock, is_(5 + self.offset))
             ended_task_event = self.graph.task_event_store.retrieve_most_recent(task_id=self.task.id)
             assert_that(ended_task_event.event_type, is_(TaskEventType.ENDED))
-            assert_that(ended_task_event.clock, is_(6))
+            assert_that(ended_task_event.clock, is_(6 + self.offset))
 
         self.graph.sns_producer.produce.assert_has_calls(
             [
@@ -375,7 +379,8 @@ class TestTaskEventCRUDRoutes:
         assert_that(descending_response.status_code, is_(equal_to(200)))
         data = loads(descending_response.data.decode("utf-8"))
         descending_order_clock_list = [event['clock'] for event in data["items"]]
-        assert_that(descending_order_clock_list, is_(equal_to([4, 3, 2, 1])))
+        assert_that(descending_order_clock_list,
+                    is_(equal_to([4 + self.offset, 3 + self.offset, 2 + self.offset, 1 + self.offset])))
 
         ascending_response = self.client.get(
             "/api/v1/task_event?sort_by_clock=true&sort_clock_in_ascending_order=true",
@@ -383,7 +388,8 @@ class TestTaskEventCRUDRoutes:
         assert_that(ascending_response.status_code, is_(equal_to(200)))
         data = loads(ascending_response.data.decode("utf-8"))
         ascending_order_clock_list = [event['clock'] for event in data["items"]]
-        assert_that(ascending_order_clock_list, is_(equal_to([1, 2, 3, 4])))
+        assert_that(ascending_order_clock_list,
+                    is_(equal_to([1 + self.offset, 2 + self.offset, 3 + self.offset, 4 + self.offset])))
 
         invalid_response = self.client.get(
             "/api/v1/task_event?sort_clock_in_ascending_order=true",
