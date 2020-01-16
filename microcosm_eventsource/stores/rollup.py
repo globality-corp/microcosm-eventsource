@@ -29,7 +29,8 @@ class RollUpStore:
 
     @property
     def postgres_store_metrics(self):
-        # Rollup store is unable to reference graph directly, so accessing it via container_store
+        # postgres_store_metrics is required by postgres_metric_timing decorator.
+        # Rollup store is unable to reference graph directly, so accessing it via container_store.
         # Assumption is that container_store(type Store) will always have access to graph.
         return self.container_store.graph.postgres_store_metrics
 
