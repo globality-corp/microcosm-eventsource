@@ -234,20 +234,7 @@ class TestTaskEventCRUDRoutes:
         )
         assert_that(response.status_code, is_(equal_to(201)))
 
-        data = loads(response.data.decode("utf-8"))
-        assert_that(data, has_entry("taskId", str(self.task.id)))
-        assert_that(data, has_entry("clock", 4 + self.offset))
-        assert_that(data, has_entry("parentId", str(scheduled_event.id)))
-        assert_that(data, has_entry("version", 1))
-
-        self.graph.sns_producer.produce.assert_called_with(
-            media_type="application/vnd.globality.pubsub._.created.task_event.started",
-            uri="http://localhost/api/v1/task_event/{}".format(data["id"]),
-        )
-
         with SessionContext(self.graph), transaction():
-            task_event = self.graph.task_event_store.retrieve(data["id"])
-            assert_that(task_event.state, is_(contains(TaskEventType.STARTED)))
             task = self.task_store.retrieve(self.task.id)
             assert_that(task.latest_task_event, is_(equal_to("started")))
 
