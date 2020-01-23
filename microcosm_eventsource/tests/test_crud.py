@@ -58,6 +58,8 @@ class TestTaskEventCRUDRoutes:
         self.client = self.graph.flask.test_client()
         recreate_all(self.graph)
 
+        self.task_store = self.graph.task_store
+
         with SessionContext(self.graph), transaction() as session:
             self.task = Task().create()
             self.graph.sns_producer.sns_client.reset_mock()
@@ -215,6 +217,39 @@ class TestTaskEventCRUDRoutes:
         with SessionContext(self.graph), transaction():
             task_event = self.graph.task_event_store.retrieve(data["id"])
             assert_that(task_event.state, is_(contains(TaskEventType.STARTED)))
+
+    def test_update_container(self):
+        with SessionContext(self.graph), transaction():
+            scheduled_event = list(islice(self.iter_events(), 3))[-1]
+            assert_that(scheduled_event.event_type, is_(equal_to(TaskEventType.SCHEDULED)))
+            task = self.task_store.retrieve(self.task.id)
+            assert_that(task.latest_task_event, is_(equal_to(None)))
+
+        response = self.client.post(
+            "/api/v1/task_event",
+            data=dumps(dict(
+                taskId=str(self.task.id),
+                eventType=TaskEventType.STARTED.name,
+            )),
+        )
+        assert_that(response.status_code, is_(equal_to(201)))
+
+        data = loads(response.data.decode("utf-8"))
+        assert_that(data, has_entry("taskId", str(self.task.id)))
+        assert_that(data, has_entry("clock", 4 + self.offset))
+        assert_that(data, has_entry("parentId", str(scheduled_event.id)))
+        assert_that(data, has_entry("version", 1))
+
+        self.graph.sns_producer.produce.assert_called_with(
+            media_type="application/vnd.globality.pubsub._.created.task_event.started",
+            uri="http://localhost/api/v1/task_event/{}".format(data["id"]),
+        )
+
+        with SessionContext(self.graph), transaction():
+            task_event = self.graph.task_event_store.retrieve(data["id"])
+            assert_that(task_event.state, is_(contains(TaskEventType.STARTED)))
+            task = self.task_store.retrieve(self.task.id)
+            assert_that(task.latest_task_event, is_(equal_to("started")))
 
     def test_transition_to_reassigned(self):
         with SessionContext(self.graph), transaction():

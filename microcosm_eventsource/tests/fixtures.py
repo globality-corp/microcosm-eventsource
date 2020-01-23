@@ -148,6 +148,7 @@ class Task(UnixTimestampEntityMixin, Model):
     __tablename__ = "task"
 
     description = Column(String)
+    latest_task_event = Column(String)
 
     discriminator = Column(String, nullable=False)
 
@@ -248,9 +249,15 @@ def configure_session_factory(graph):
     return register_session_factory(graph, "db", SessionContext.make)
 
 
+class TaskEventFactory(EventFactory):
+    def handle_started(self, parent, event):
+        parent.latest_task_event = event.event_type.name.lower()
+
+
 @binding("task_event_controller")
 class TaskEventController(EventController):
     def __init__(self, graph):
+        self.task_store = graph.task_store
         super(TaskEventController, self).__init__(graph, graph.task_event_store)
         self.ns = Namespace(
             subject=TaskEvent,
@@ -262,8 +269,9 @@ class TaskEventController(EventController):
 
     @property
     def event_factory(self):
-        return EventFactory(
+        return TaskEventFactory(
             event_store=self.store,
+            container_store=self.task_store,
             identifier_key=self.identifier_key,
             **self.get_event_factory_kwargs(),
         )

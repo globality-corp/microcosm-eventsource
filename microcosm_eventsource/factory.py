@@ -38,6 +38,11 @@ class EventInfo:
         )
 
 
+def get_handler_name_for_event_type(event_type):
+    pythonic_event_type = event_type.name.lower()
+    return f"handle_{pythonic_event_type}"
+
+
 class EventFactory:
     """
     Base class for creating an event.
@@ -46,12 +51,14 @@ class EventFactory:
     def __init__(
         self,
         event_store,
+        container_store=None,
         default_ns=None,
         identifier_key=None,
         publish_event_pubsub=True,
         publish_model_pubsub=False,
     ):
         self.event_store = event_store
+        self.container_store = container_store
         self.default_ns = default_ns
         self.identifier_key = identifier_key
         self.publish_event_pubsub = publish_event_pubsub
@@ -69,7 +76,40 @@ class EventFactory:
             event_info.parent = self.event_store.retrieve_most_recent(**kwargs)
         self.create_transition(event_info, **kwargs)
         self.create_auto_transition_event(ns, sns_producer, parent=event_info.event, version=version, **kwargs)
+        self._update_container(event_info.event)
         return event_info.event
+
+    def _update_container(self, event):
+        """
+        The EventFactory class exposes a hook to allow events to update their
+        container object as needed. The convention is simply to define a
+        function with the naming convention:
+
+            def handle_<pythonic_casing_of_eventname>(self, container, event):
+                pass
+
+        - `container` refers to the container object for the event
+        - `event` refers to the created event object
+
+        See the tests for examples.
+
+        """
+        try:
+            # This looks a little crazy this this is the same logic we use in the store meta class:
+            # https://github.com/globality-corp/microcosm-eventsource/blob/develop/microcosm_eventsource/models/meta.py#L75
+            container_identifier = getattr(event, f"{event.__container__.__tablename__}_id")
+            container = self.container_store.retrieve(identifier=container_identifier)
+
+            # this could be made more explicit by defining a registry and using
+            # decorators in the base class, this is just a fun PoC
+            # implementation
+            handler_name = get_handler_name_for_event_type(event.event_type)
+            container_update_handler = getattr(self, handler_name)
+
+            return container_update_handler(container, event)
+        except AttributeError:
+            # do something smart, log a warning or something? possibly only info, not all events update parent
+            pass
 
     def create_transition(self, event_info, **kwargs):
         """
