@@ -57,12 +57,16 @@ class EventFactory:
         self.publish_event_pubsub = publish_event_pubsub
         self.publish_model_pubsub = publish_model_pubsub
 
+    @property
+    def event_info_cls(self):
+        return EventInfo
+
     def create(self, ns, sns_producer, event_type, parent=None, version=None, **kwargs):
         """
         Create an event, validating the underlying state machine.
 
         """
-        event_info = EventInfo(ns or self.default_ns, sns_producer, event_type, parent, version)
+        event_info = self.event_info_cls(ns or self.default_ns, sns_producer, event_type, parent, version)
         self.validate_required_fields(event_info, **kwargs)
         self.validate_transition(event_info, **kwargs)
         if not event_info.parent:
