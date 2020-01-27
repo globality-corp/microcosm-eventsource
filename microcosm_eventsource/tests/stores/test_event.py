@@ -23,6 +23,7 @@ from microcosm_postgres.context import SessionContext, transaction
 from microcosm_postgres.errors import DuplicateModelError, ModelIntegrityError
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Query
+from sqlalchemy.sql.schema import Sequence
 
 from microcosm_eventsource.errors import (
     ConcurrentStateConflictError,
@@ -58,8 +59,10 @@ class TestEventStore:
         self.context.recreate_all()
         self.context.open()
 
-        with transaction():
+        with transaction() as session:
             self.task = Task().create()
+
+            self.offset = session.execute(Sequence("task_event_clock_seq"))
 
     def teardown(self):
         self.context.close()
@@ -92,7 +95,7 @@ class TestEventStore:
             )
             self.store.create(task_event)
 
-        assert_that(task_event.clock, is_(equal_to(1)))
+        assert_that(task_event.clock, is_(equal_to(1 + self.offset)))
         assert_that(task_event.parent_id, is_(none()))
         assert_that(task_event.state, contains(TaskEventType.CREATED))
         assert_that(task_event.version, is_(equal_to(1)))
