@@ -27,8 +27,11 @@ from microcosm_eventsource.accumulation import alias, keep, union
 from microcosm_eventsource.controllers import EventController
 from microcosm_eventsource.event_types import EventType, EventTypeUnion, event_info
 from microcosm_eventsource.factory import EventFactory
-from microcosm_eventsource.immutable_event_factory import ImmutableEventFactory, register_container_mutator_common, \
-    register_container_mutator_by_event_type
+from microcosm_eventsource.immutable_event_factory import (
+    ImmutableEventFactory,
+    register_container_mutator_by_event_type,
+    register_container_mutator_common,
+)
 from microcosm_eventsource.models import EventMeta
 from microcosm_eventsource.resources import EventSchema, SearchEventSchema
 from microcosm_eventsource.routes import configure_event_crud
@@ -396,7 +399,7 @@ def configure_task_crud(graph):
 
 
 @binding("immutable_task_crud_routes")
-def configure_task_crud(graph):
+def configure_immutable_task_crud(graph):
     configure_event_crud(
         graph=graph,
         controller=graph.immutable_task_event_controller,

@@ -9,6 +9,7 @@ from collections import defaultdict
 
 from microcosm_eventsource.factory import EventFactory
 
+
 container_common_mutator_registry = defaultdict(list)
 container_event_specific_mutator_registry = defaultdict(list)
 
