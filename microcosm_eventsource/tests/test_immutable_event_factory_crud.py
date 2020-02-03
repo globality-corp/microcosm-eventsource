@@ -114,6 +114,7 @@ class TestTaskEventCRUDRoutes:
         with SessionContext(self.graph), transaction():
             task = self.graph.immutable_task_store.retrieve(self.task.id)
             assert_that(task.is_assigned, is_(equal_to(True)))
+            assert_that(task.latest_task_event, is_(equal_to(ImmutableTaskEventType.ASSIGNED)))
 
     def test_register_multiple_event_specific_handler_on_same_event(self):
         with SessionContext(self.graph), transaction():
@@ -154,3 +155,4 @@ class TestTaskEventCRUDRoutes:
             task = self.graph.immutable_task_store.retrieve(self.task.id)
             assert_that(task.is_scheduled, is_(equal_to(True)))
             assert_that(task.is_deadline_set, is_(equal_to(True)))
+            assert_that(task.latest_task_event, is_(equal_to(ImmutableTaskEventType.SCHEDULED)))
