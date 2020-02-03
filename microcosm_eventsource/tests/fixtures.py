@@ -12,7 +12,9 @@ from microcosm_flask.session import register_session_factory
 from microcosm_postgres.context import SessionContext
 from microcosm_postgres.models import EntityMixin, Model, UnixTimestampEntityMixin
 from microcosm_postgres.store import Store
+from microcosm_postgres.types import EnumType
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -25,6 +27,8 @@ from microcosm_eventsource.accumulation import alias, keep, union
 from microcosm_eventsource.controllers import EventController
 from microcosm_eventsource.event_types import EventType, EventTypeUnion, event_info
 from microcosm_eventsource.factory import EventFactory
+from microcosm_eventsource.immutable_event_factory import ImmutableEventFactory, register_container_mutator_common, \
+    register_container_mutator_by_event_type
 from microcosm_eventsource.models import EventMeta
 from microcosm_eventsource.resources import EventSchema, SearchEventSchema
 from microcosm_eventsource.routes import configure_event_crud
@@ -142,6 +146,7 @@ class AdvancedTaskEventType(Enum):
 
 TaskEventType = EventTypeUnion("TaskEventType", BasicTaskEventType, AdvancedTaskEventType)
 SubTaskEventType = EventTypeUnion("SubTaskEventType", BasicTaskEventType)
+ImmutableTaskEventType = EventTypeUnion("ImmutableTaskEventType", BasicTaskEventType)
 
 
 class Task(UnixTimestampEntityMixin, Model):
@@ -155,6 +160,23 @@ class Task(UnixTimestampEntityMixin, Model):
         polymorphic_identity="task",
         polymorphic_on=discriminator,
     )
+
+
+class ImmutableTask(UnixTimestampEntityMixin, Model):
+    __tablename__ = "immutable_task"
+
+    description = Column(String)
+    latest_task_event = Column(EnumType(ImmutableTaskEventType), nullable=True)
+    is_assigned = Column(Boolean, nullable=True)
+    is_scheduled = Column(Boolean, nullable=True)
+    is_deadline_set = Column(Boolean, nullable=True)
+
+    # discriminator = Column(String, nullable=False)
+
+    # __mapper_args__ = dict(
+    #     polymorphic_identity="immutable_task",
+    #     # polymorphic_on=discriminator,
+    # )
 
 
 class SubTask(Task):
@@ -181,6 +203,15 @@ class TaskEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
     deadline = Column(DateTime)
 
 
+class ImmutableTaskEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
+    __tablename__ = "immutable_task_event"
+    __eventtype__ = ImmutableTaskEventType
+    __container__ = ImmutableTask
+
+    assignee = Column(String)
+    deadline = Column(String)
+
+
 class SubTaskEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
     __tablename__ = "sub_task_event"
     __eventtype__ = SubTaskEventType
@@ -198,6 +229,16 @@ class TaskStore(Store):
 
     def _order_by(self, query, **kwargs):
         return query.order_by(Task.created_at.desc())
+
+
+@binding("immutable_task_store")
+class ImmutableTaskStore(Store):
+
+    def __init__(self, graph):
+        super(ImmutableTaskStore, self).__init__(graph, ImmutableTask)
+
+    def _order_by(self, query, **kwargs):
+        return query.order_by(ImmutableTask.created_at.desc())
 
 
 @binding("sub_task_store")
@@ -220,6 +261,13 @@ class TaskEventStore(EventStore):
         super(TaskEventStore, self).__init__(graph, TaskEvent)
 
 
+@binding("immutable_task_event_store")
+class ImmutableTaskEventStore(EventStore):
+
+    def __init__(self, graph):
+        super(ImmutableTaskEventStore, self).__init__(graph, ImmutableTaskEvent)
+
+
 @binding("sub_task_event_store")
 class SubTaskEventStore(EventStore):
 
@@ -240,6 +288,22 @@ class TaskEventSchema(NewTaskEventSchema, EventSchema):
 
 class SearchTaskEventSchema(SearchEventSchema):
     task_id = fields.UUID()
+    event_type = EnumField(TaskEventType)
+
+
+class NewImmutableTaskEventSchema(Schema):
+    assignee = fields.String(required=False, allow_none=True)
+    deadline = fields.String(required=False, allow_none=True)
+    immutableTaskId = fields.UUID(attribute="immutable_task_id", required=True)
+    eventType = EnumField(ImmutableTaskEventType, attribute="event_type", required=True)
+
+
+class ImmutableTaskEventSchema(NewImmutableTaskEventSchema, EventSchema):
+    pass
+
+
+class SearchImmutableTaskEventSchema(SearchEventSchema):
+    immutable_task_id = fields.UUID()
     event_type = EnumField(TaskEventType)
 
 
@@ -269,6 +333,57 @@ class TaskEventController(EventController):
         )
 
 
+@binding("immutable_task_event_controller")
+class ImmutableTaskEventController(EventController):
+    def __init__(self, graph):
+        super(ImmutableTaskEventController, self).__init__(
+            graph,
+            store=graph.immutable_task_event_store
+        )
+        self.ns = Namespace(
+            subject=ImmutableTaskEvent,
+            version="v1",
+        )
+        self.immutable_task_event_factory = graph.immutable_task_event_factory
+
+    def get_event_factory_kwargs(self):
+        return {}
+
+    @property
+    def event_factory(self):
+        return self.immutable_task_event_factory
+
+
+@binding("immutable_task_event_factory")
+class ImmutableTaskEventFactory(ImmutableEventFactory):
+    def __init__(self, graph):
+        super().__init__(
+            event_store=graph.immutable_task_event_store,
+            container_store=graph.immutable_task_store,
+            identifier_key="immutable_task_event_id",
+            default_ns=Namespace(
+                subject=ImmutableTaskEvent,
+                version="v1",
+            ),
+        )
+
+    @register_container_mutator_common(event_type=ImmutableTaskEvent)
+    def update_latest_task_event(self, container, event):
+        container.latest_task_event = str(event.event_type)
+
+    @register_container_mutator_by_event_type(event_instance_type=ImmutableTaskEventType.ASSIGNED)
+    def update_is_assigned(self, container, _):
+        container.is_assigned = True
+
+    @register_container_mutator_by_event_type(event_instance_type=ImmutableTaskEventType.SCHEDULED)
+    def update_is_scheduled(self, container, _):
+        container.is_scheduled = True
+
+    @register_container_mutator_by_event_type(event_instance_type=ImmutableTaskEventType.SCHEDULED)
+    def update_is_deadline_set(self, container, _):
+        container.is_deadline_set = True
+
+
 @binding("task_crud_routes")
 def configure_task_crud(graph):
     configure_event_crud(
@@ -277,6 +392,17 @@ def configure_task_crud(graph):
         event_schema=TaskEventSchema(),
         new_event_schema=NewTaskEventSchema(),
         search_event_schema=SearchTaskEventSchema(),
+    )
+
+
+@binding("immutable_task_crud_routes")
+def configure_task_crud(graph):
+    configure_event_crud(
+        graph=graph,
+        controller=graph.immutable_task_event_controller,
+        event_schema=ImmutableTaskEventSchema(),
+        new_event_schema=NewImmutableTaskEventSchema(),
+        search_event_schema=SearchImmutableTaskEventSchema(),
     )
 
 
