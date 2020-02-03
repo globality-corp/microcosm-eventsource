@@ -6,12 +6,13 @@ on event types
 
 """
 from collections import defaultdict
+from typing import Dict
 
 from microcosm_eventsource.factory import EventFactory
 
 
-container_common_mutator_registry = defaultdict(list)
-container_event_specific_mutator_registry = defaultdict(list)
+container_common_mutator_registry: Dict[str, list] = defaultdict(list)
+container_event_specific_mutator_registry: Dict[str, list] = defaultdict(list)
 
 
 def register_container_mutator_common(event_type):

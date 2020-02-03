@@ -3,6 +3,7 @@ Test task crud routes.
 
 """
 from json import dumps
+from os import environ
 from os.path import dirname
 
 from hamcrest import (
@@ -22,13 +23,23 @@ from microcosm_eventsource.tests.fixtures import ImmutableTask, ImmutableTaskEve
 
 class TestTaskEventCRUDRoutes:
     def setup(self):
+        loader = load_from_dict(
+            secret=dict(
+                postgres=dict(
+                    host=environ.get("MICROCOSM_EVENTSOURCE__POSTGRES__HOST", "localhost"),
+                ),
+            ),
+            postgres=dict(
+                host=environ.get("MICROCOSM_EVENTSOURCE__POSTGRES__HOST", "localhost"),
+            ),
+            sns_producer=dict(
+                mock_sns=False,
+            ),
+        )
+
         self.graph = create_object_graph(
             "microcosm_eventsource",
-            loader=(load_from_dict(
-                sns_producer=dict(
-                    mock_sns=False,
-                ),
-            )),
+            loader=loader,
             root_path=dirname(__file__),
             testing=True,
         )
