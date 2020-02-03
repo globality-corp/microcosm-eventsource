@@ -174,13 +174,6 @@ class ImmutableTask(UnixTimestampEntityMixin, Model):
     is_scheduled = Column(Boolean, nullable=True)
     is_deadline_set = Column(Boolean, nullable=True)
 
-    # discriminator = Column(String, nullable=False)
-
-    # __mapper_args__ = dict(
-    #     polymorphic_identity="immutable_task",
-    #     # polymorphic_on=discriminator,
-    # )
-
 
 class SubTask(Task):
     __tablename__ = "sub_task"
