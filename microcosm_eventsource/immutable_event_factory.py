@@ -66,7 +66,7 @@ class ImmutableEventFactory(EventFactory):
         self._update_container(event_info.event)
 
     def _update_container(self, event):
-        # This looks a little crazy this this is the same logic we use in the store meta class:
+        # This is the same logic we use in the store meta class:
         # https://github.com/globality-corp/microcosm-eventsource/blob/develop/microcosm_eventsource/models/meta.py#L75
         container_identifier = getattr(event, f"{event.__container__.__tablename__}_id")
         container = self.container_store.retrieve(identifier=container_identifier)
@@ -74,7 +74,7 @@ class ImmutableEventFactory(EventFactory):
         for common_handler_name in get_common_handler_names_for_event(event):
             getattr(self, common_handler_name)(container, event)
 
-        for event_type_handler_name in get_specific_handler_names_for_event_type(event):
-            getattr(self, event_type_handler_name)(container, event)
+        for event_specific_handler_name in get_specific_handler_names_for_event_type(event):
+            getattr(self, event_specific_handler_name)(container, event)
 
         self.container_store.update(identifier=container_identifier, new_instance=container)
