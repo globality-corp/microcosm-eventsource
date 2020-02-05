@@ -5,42 +5,41 @@ In extension of EventFactory, this class provides a native support of event upda
 on event types
 
 """
-from collections import defaultdict
 from typing import Dict
 
 from microcosm_eventsource.factory import EventFactory
 
 
-container_common_mutator_registry: Dict[str, list] = defaultdict(list)
-container_event_specific_mutator_registry: Dict[str, list] = defaultdict(list)
+_common_container_mutator_registry: Dict[str, str] = {}
+_event_specific_container_mutator_registry: Dict[str, str] = {}
 
 
-def register_container_mutator_common(event_type):
+def common_container_mutator(event_type):
     def decorator(func):
-        container_common_mutator_registry[event_type.__name__].append(func.__name__)
+        _common_container_mutator_registry[event_type.__name__] = func.__name__
         return func
 
     return decorator
 
 
-def register_container_mutator_by_event_type(event_instance_type):
+def event_specific_container_mutator(event_instance_type):
     def decorator(func):
-        container_event_specific_mutator_registry[event_instance_type.name].append(func.__name__)
+        _event_specific_container_mutator_registry[event_instance_type.name] = func.__name__
         return func
 
     return decorator
 
 
-def get_specific_handler_names_for_event_type(event):
-    return container_event_specific_mutator_registry[event.event_type.name]
+def get_specific_handler_name_for_event_type(event):
+    return _event_specific_container_mutator_registry.get(event.event_type.name)
 
 
-def get_common_handler_names_for_event(event):
+def get_common_handler_name_for_event(event):
     event_type_name = f"{event.__class__.__container__.__name__}Event"
-    return container_common_mutator_registry[event_type_name]
+    return _common_container_mutator_registry.get(event_type_name)
 
 
-class ImmutableEventFactory(EventFactory):
+class ContainerMutatorEventFactory(EventFactory):
     def __init__(
         self,
         event_store,
@@ -72,10 +71,12 @@ class ImmutableEventFactory(EventFactory):
         container_identifier = getattr(event, f"{event.__container__.__tablename__}_id")
         container = self.container_store.retrieve(identifier=container_identifier)
 
-        for common_handler_name in get_common_handler_names_for_event(event):
+        common_handler_name = get_common_handler_name_for_event(event)
+        if common_handler_name and hasattr(self, common_handler_name):
             getattr(self, common_handler_name)(container, event)
 
-        for event_specific_handler_name in get_specific_handler_names_for_event_type(event):
+        event_specific_handler_name = get_specific_handler_name_for_event_type(event)
+        if event_specific_handler_name and hasattr(self, event_specific_handler_name):
             getattr(self, event_specific_handler_name)(container, event)
 
         self.container_store.update(identifier=container_identifier, new_instance=container)

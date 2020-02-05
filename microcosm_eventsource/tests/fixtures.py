@@ -28,9 +28,9 @@ from microcosm_eventsource.controllers import EventController
 from microcosm_eventsource.event_types import EventType, EventTypeUnion, event_info
 from microcosm_eventsource.factory import EventFactory
 from microcosm_eventsource.immutable_event_factory import (
-    ImmutableEventFactory,
-    register_container_mutator_by_event_type,
-    register_container_mutator_common,
+    ContainerMutatorEventFactory,
+    common_container_mutator,
+    event_specific_container_mutator,
 )
 from microcosm_eventsource.models import EventMeta
 from microcosm_eventsource.resources import EventSchema, SearchEventSchema
@@ -351,7 +351,7 @@ class ImmutableTaskEventController(EventController):
 
 
 @binding("immutable_task_event_factory")
-class ImmutableTaskEventFactory(ImmutableEventFactory):
+class ImmutableTaskEventFactory(ContainerMutatorEventFactory):
     def __init__(self, graph):
         super().__init__(
             event_store=graph.immutable_task_event_store,
@@ -363,21 +363,17 @@ class ImmutableTaskEventFactory(ImmutableEventFactory):
             ),
         )
 
-    @register_container_mutator_common(event_type=ImmutableTaskEvent)
+    @common_container_mutator(event_type=ImmutableTaskEvent)
     def update_latest_task_event(self, container, event):
         container.latest_task_event = str(event.event_type)
 
-    @register_container_mutator_by_event_type(event_instance_type=ImmutableTaskEventType.ASSIGNED)
+    @event_specific_container_mutator(event_instance_type=ImmutableTaskEventType.ASSIGNED)
     def update_is_assigned(self, container, _):
         container.is_assigned = True
 
-    @register_container_mutator_by_event_type(event_instance_type=ImmutableTaskEventType.SCHEDULED)
+    @event_specific_container_mutator(event_instance_type=ImmutableTaskEventType.SCHEDULED)
     def update_is_scheduled(self, container, _):
         container.is_scheduled = True
-
-    @register_container_mutator_by_event_type(event_instance_type=ImmutableTaskEventType.SCHEDULED)
-    def update_is_deadline_set(self, container, _):
-        container.is_deadline_set = True
 
 
 @binding("task_crud_routes")
