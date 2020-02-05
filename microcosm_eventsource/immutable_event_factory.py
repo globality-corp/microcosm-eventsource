@@ -14,8 +14,15 @@ _common_container_mutator_registry: Dict[str, str] = {}
 _event_specific_container_mutator_registry: Dict[str, str] = {}
 
 
+class DuplicateEventHandlerRegistrationAttempted(Exception):
+    pass
+
+
 def common_container_mutator(event_type):
     def decorator(func):
+        if event_type.__name__ in _common_container_mutator_registry:
+            raise DuplicateEventHandlerRegistrationAttempted(
+                "Mutator is already registered for event type: %s" % event_type.__name__)
         _common_container_mutator_registry[event_type.__name__] = func.__name__
         return func
 
@@ -24,6 +31,9 @@ def common_container_mutator(event_type):
 
 def event_specific_container_mutator(event_instance_type):
     def decorator(func):
+        if event_instance_type.name in _event_specific_container_mutator_registry:
+            raise DuplicateEventHandlerRegistrationAttempted(
+                "Mutator is already registered for event instance type: %s" % event_instance_type.name)
         _event_specific_container_mutator_registry[event_instance_type.name] = func.__name__
         return func
 
@@ -41,13 +51,13 @@ def get_common_handler_name_for_event(event):
 
 class ContainerMutatorEventFactory(EventFactory):
     def __init__(
-        self,
-        event_store,
-        container_store,
-        default_ns=None,
-        identifier_key=None,
-        publish_event_pubsub=True,
-        publish_model_pubsub=False,
+            self,
+            event_store,
+            container_store,
+            default_ns=None,
+            identifier_key=None,
+            publish_event_pubsub=True,
+            publish_model_pubsub=False,
     ):
         super().__init__(
             event_store=event_store,
