@@ -10,20 +10,13 @@ from typing import Dict
 from microcosm_eventsource.factory import EventFactory
 
 
-_common_container_mutator_registry: Dict[str, str] = {}
-_event_specific_container_mutator_registry: Dict[str, str] = {}
-
-
 class DuplicateEventHandlerRegistrationAttempted(Exception):
     pass
 
 
 def common_container_mutator(event_type):
     def decorator(func):
-        if event_type.__name__ in _common_container_mutator_registry:
-            raise DuplicateEventHandlerRegistrationAttempted(
-                "Mutator is already registered for event type: %s" % event_type.__name__)
-        _common_container_mutator_registry[event_type.__name__] = func.__name__
+        ContainerMutatorEventFactory.set_common_container_mutator(event_type, func)
         return func
 
     return decorator
@@ -31,25 +24,16 @@ def common_container_mutator(event_type):
 
 def event_specific_container_mutator(event_instance_type):
     def decorator(func):
-        if event_instance_type.name in _event_specific_container_mutator_registry:
-            raise DuplicateEventHandlerRegistrationAttempted(
-                "Mutator is already registered for event instance type: %s" % event_instance_type.name)
-        _event_specific_container_mutator_registry[event_instance_type.name] = func.__name__
+        ContainerMutatorEventFactory.set_event_specific_container_mutator(event_instance_type, func)
         return func
 
     return decorator
 
 
-def get_specific_handler_name_for_event_type(event):
-    return _event_specific_container_mutator_registry.get(event.event_type.name)
-
-
-def get_common_handler_name_for_event(event):
-    event_type_name = f"{event.__class__.__container__.__name__}Event"
-    return _common_container_mutator_registry.get(event_type_name)
-
-
 class ContainerMutatorEventFactory(EventFactory):
+    _common_container_mutator_registry: Dict[str, str] = {}
+    _event_specific_container_mutator_registry: Dict[str, str] = {}
+
     def __init__(
             self,
             event_store,
@@ -68,6 +52,29 @@ class ContainerMutatorEventFactory(EventFactory):
         )
         self.container_store = container_store
 
+    @classmethod
+    def get_specific_handler_name_for_event_type(cls, event):
+        return cls._event_specific_container_mutator_registry.get(event.event_type.name)
+
+    @classmethod
+    def get_common_handler_name_for_event(cls, event):
+        event_type_name = f"{event.__class__.__container__.__name__}Event"
+        return cls._common_container_mutator_registry.get(event_type_name)
+
+    @classmethod
+    def set_common_container_mutator(cls, event_type, func):
+        if event_type.__name__ in cls._common_container_mutator_registry:
+            raise DuplicateEventHandlerRegistrationAttempted(
+                "Mutator is already registered for event type: %s" % event_type.__name__)
+        cls._common_container_mutator_registry[event_type.__name__] = func.__name__
+
+    @classmethod
+    def set_event_specific_container_mutator(cls, event_instance_type, func):
+        if event_instance_type.name in cls._event_specific_container_mutator_registry:
+            raise DuplicateEventHandlerRegistrationAttempted(
+                "Mutator is already registered for event instance type: %s" % event_instance_type.name)
+        cls._event_specific_container_mutator_registry[event_instance_type.name] = func.__name__
+
     def create_event(self, event_info, skip_publish=False, **kwargs):
         super().create_event(
             event_info=event_info,
@@ -81,11 +88,11 @@ class ContainerMutatorEventFactory(EventFactory):
         container_identifier = getattr(event, f"{event.__container__.__tablename__}_id")
         container = self.container_store.retrieve(identifier=container_identifier)
 
-        common_handler_name = get_common_handler_name_for_event(event)
+        common_handler_name = self.get_common_handler_name_for_event(event)
         if common_handler_name and hasattr(self, common_handler_name):
             getattr(self, common_handler_name)(container, event)
 
-        event_specific_handler_name = get_specific_handler_name_for_event_type(event)
+        event_specific_handler_name = self.get_specific_handler_name_for_event_type(event)
         if event_specific_handler_name and hasattr(self, event_specific_handler_name):
             getattr(self, event_specific_handler_name)(container, event)
 
