@@ -27,11 +27,7 @@ from microcosm_eventsource.accumulation import alias, keep, union
 from microcosm_eventsource.controllers import EventController
 from microcosm_eventsource.event_types import EventType, EventTypeUnion, event_info
 from microcosm_eventsource.factory import EventFactory
-from microcosm_eventsource.immutable_event_factory import (
-    ContainerMutatorEventFactory,
-    common_container_mutator,
-    event_specific_container_mutator,
-)
+from microcosm_eventsource.immutable_event_factory import ContainerMutatorEventFactory
 from microcosm_eventsource.models import EventMeta
 from microcosm_eventsource.resources import EventSchema, SearchEventSchema
 from microcosm_eventsource.routes import configure_event_crud
@@ -100,19 +96,36 @@ class FlexibleTaskEventType(EventType):
     )
 
 
+def common_parent_mutator(container, event):
+    container.latest_task_event = str(event.event_type)
+
+
+def update_is_assigned(container, event):
+    container.is_assigned = True
+
+
+def update_is_scheduled(container, event):
+    container.is_scheduled = True
+
+
 class BasicTaskEventType(EventType):
     CREATED = event_info(
         follows=nothing(),
+        common_parent_mutator=common_parent_mutator,
     )
     ASSIGNED = event_info(
         follows=all_of("CREATED", but_not("ASSIGNED")),
         accumulate=union(),
         requires=["assignee"],
+        common_parent_mutator=common_parent_mutator,
+        specific_parent_mutator=update_is_assigned,
     )
     SCHEDULED = event_info(
         follows=all_of("CREATED", but_not("SCHEDULED")),
         accumulate=union(),
         requires=["deadline"],
+        common_parent_mutator=common_parent_mutator,
+        specific_parent_mutator=update_is_scheduled,
     )
     STARTED = event_info(
         follows=all_of("ASSIGNED", "SCHEDULED"),
@@ -362,18 +375,6 @@ class ImmutableTaskEventFactory(ContainerMutatorEventFactory):
                 version="v1",
             ),
         )
-
-    @common_container_mutator(event_type=ImmutableTaskEvent)
-    def update_latest_task_event(self, container, event):
-        container.latest_task_event = str(event.event_type)
-
-    @event_specific_container_mutator(event_instance_type=ImmutableTaskEventType.ASSIGNED)
-    def update_is_assigned(self, container, _):
-        container.is_assigned = True
-
-    @event_specific_container_mutator(event_instance_type=ImmutableTaskEventType.SCHEDULED)
-    def update_is_scheduled(self, container, _):
-        container.is_scheduled = True
 
 
 @binding("task_crud_routes")

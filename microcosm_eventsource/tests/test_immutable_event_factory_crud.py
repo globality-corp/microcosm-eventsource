@@ -8,28 +8,17 @@ from os.path import dirname
 
 from hamcrest import (
     assert_that,
-    calling,
     contains,
     equal_to,
     is_,
     none,
-    raises,
 )
 from microcosm.api import create_object_graph
 from microcosm.loaders import load_from_dict
 from microcosm_postgres.context import SessionContext, transaction
 from microcosm_postgres.operations import recreate_all
 
-from microcosm_eventsource.immutable_event_factory import (
-    DuplicateEventHandlerRegistrationAttempted,
-    common_container_mutator,
-    event_specific_container_mutator,
-)
-from microcosm_eventsource.tests.fixtures import (
-    ImmutableTask,
-    ImmutableTaskEvent,
-    ImmutableTaskEventType,
-)
+from microcosm_eventsource.tests.fixtures import ImmutableTask, ImmutableTaskEventType
 
 
 class TestTaskEventCRUDRoutes:
@@ -126,16 +115,3 @@ class TestTaskEventCRUDRoutes:
             task = self.graph.immutable_task_store.retrieve(self.task.id)
             assert_that(task.is_assigned, is_(equal_to(True)))
             assert_that(task.latest_task_event, is_(equal_to(ImmutableTaskEventType.ASSIGNED)))
-
-    def test_register_multiple_event_specific_handler_on_same_event_raises_exception(self):
-        registered_event_specific_func = event_specific_container_mutator(
-            event_instance_type=ImmutableTaskEventType.SCHEDULED)
-        assert_that(calling(registered_event_specific_func).with_args("any args"),
-                    raises(DuplicateEventHandlerRegistrationAttempted,
-                           "Mutator is already registered for event instance type: %s" %
-                           ImmutableTaskEventType.SCHEDULED.name))
-
-        registered_common_func = common_container_mutator(event_type=ImmutableTaskEvent)
-        assert_that(calling(registered_common_func).with_args("any args"),
-                    raises(DuplicateEventHandlerRegistrationAttempted,
-                           "Mutator is already registered for event type: %s" % ImmutableTaskEvent.__name__))

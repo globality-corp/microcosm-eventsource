@@ -30,7 +30,11 @@ class EventTypeInfo:
     Event type meta data.
 
     """
-    def __init__(self, follows=None, accumulate=None, restarting=False, requires=(), auto_transition=False):
+
+    def __init__(self, follows=None, accumulate=None, restarting=False, requires=(), auto_transition=False,
+                 common_parent_mutator=None,
+                 specific_parent_mutator=None,
+                 ):
         """
         :param follows:         an instance of the event mini-grammar
         :param accumulate:      whether the event type should accumulating state
@@ -44,6 +48,8 @@ class EventTypeInfo:
         self.restarting = restarting
         self.requires = requires
         self.auto_transition = auto_transition
+        self.common_parent_mutator = common_parent_mutator
+        self.specific_parent_mutator = specific_parent_mutator
 
 
 class EventType(Enum):
@@ -51,6 +57,7 @@ class EventType(Enum):
     Based event type enum.
 
     """
+
     @property
     def is_initial(self):
         """
@@ -257,6 +264,12 @@ class EventType(Enum):
             ]
             if auto_transition_events and len(cls.available_transitions(state)) > 1:
                 raise AssertionError("Only one auto-transition event can follow any state")
+
+    def update_container_from_event(self, container, event):
+        if self.value.common_parent_mutator:
+            self.value.common_parent_mutator(container, event)
+        if self.value.specific_parent_mutator:
+            self.value.specific_parent_mutator(container, event)
 
     def __lt__(self, other):
         return self.name < other.name
