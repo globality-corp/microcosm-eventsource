@@ -33,6 +33,7 @@ class TestTaskEventCRUDRoutes:
             secret=dict(
                 postgres=dict(
                     host=environ.get("MICROCOSM_EVENTSOURCE__POSTGRES__HOST", "localhost"),
+                    password=environ.get("MICROCOSM_EVENTSOURCE__POSTGRES__PASSWORD", "test"),
                 ),
             ),
             postgres=dict(
