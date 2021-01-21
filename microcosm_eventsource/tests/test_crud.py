@@ -33,11 +33,12 @@ class TestTaskEventCRUDRoutes:
             secret=dict(
                 postgres=dict(
                     host=environ.get("MICROCOSM_EVENTSOURCE__POSTGRES__HOST", "localhost"),
-                    password=environ.get("MICROCOSM_EVENTSOURCE__POSTGRES__PASSWORD", "test"),
+                    password=environ.get("MICROCOSM_EVENTSOURCE__POSTGRES__PASSWORD", ""),
                 ),
             ),
             postgres=dict(
                 host=environ.get("MICROCOSM_EVENTSOURCE__POSTGRES__HOST", "localhost"),
+                password=environ.get("MICROCOSM_EVENTSOURCE__POSTGRES__PASSWORD", ""),
             ),
             sns_producer=dict(
                 mock_sns=False,
