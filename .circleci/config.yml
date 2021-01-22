@@ -15,7 +15,7 @@ version: 2.1
 defaults: &defaults
   working_directory: ~/repo
   docker:
-    - image: ${AWS_ECR_DOMAIN}/globality-build:2020.51.0
+    - image: ${AWS_ECR_DOMAIN}/globality-build:2021.3.1
       aws_auth:
         aws_access_key_id: ${AWS_ACCESS_KEY_ID}
         aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
@@ -23,13 +23,14 @@ defaults: &defaults
         EXTRA_INDEX_URL: "InjectedDuringRuntime"
         AWS_ECR_DOMAIN: "InjectedDuringRuntime"
         JFROG_AUTH: "InjectedDuringRuntime"
+        PYPI_AUTH_TOKEN: "InjectedDuringRuntime"
         PYPI_USERNAME: "InjectedDuringRuntime"
         PYPI_PASSWORD: "InjectedDuringRuntime"
 
 deploy_defaults: &deploy_defaults
   working_directory: ~/repo
   docker:
-    - image: ${AWS_ECR_DOMAIN}/globality-build:2020.51.0
+    - image: ${AWS_ECR_DOMAIN}/globality-build:2021.3.1
       aws_auth:
         aws_access_key_id: ${AWS_ACCESS_KEY_ID}
         aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
@@ -37,6 +38,7 @@ deploy_defaults: &deploy_defaults
         EXTRA_INDEX_URL: "InjectedDuringRuntime"
         AWS_ECR_DOMAIN: "InjectedDuringRuntime"
         JFROG_AUTH: "InjectedDuringRuntime"
+        PYPI_AUTH_TOKEN: "InjectedDuringRuntime"
         PYPI_USERNAME: "InjectedDuringRuntime"
         PYPI_PASSWORD: "InjectedDuringRuntime"
 
@@ -70,7 +72,7 @@ jobs:
       - run:
           name: Login AWS ECR
           command: |
-            eval $(aws ecr get-login --no-include-email)
+            aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${AWS_ECR_DOMAIN}
       - run:
           name: Build Docker - Application Service Code
           command: |
@@ -96,11 +98,11 @@ jobs:
       - setup_remote_docker:
           version: 19.03.12
           docker_layer_caching: true
+
       - run:
           name: Login AWS ECR
           command: |
-            eval $(aws ecr get-login --no-include-email)
-
+            aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${AWS_ECR_DOMAIN}
       - run:
           name: Create Postgres Container
           command: |
@@ -131,10 +133,11 @@ jobs:
       - setup_remote_docker:
           version: 19.03.12
           docker_layer_caching: true
+
       - run:
           name: Login AWS ECR
           command: |
-            eval $(aws ecr get-login --no-include-email)
+            aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${AWS_ECR_DOMAIN}
 
       - run:
           name: Copy service tests to volume
@@ -160,10 +163,11 @@ jobs:
       - setup_remote_docker:
           version: 19.03.12
           docker_layer_caching: true
+
       - run:
           name: Login AWS ECR
           command: |
-            eval $(aws ecr get-login --no-include-email)
+            aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${AWS_ECR_DOMAIN}
 
       - run:
           name: Copy service tests to volume
@@ -201,8 +205,8 @@ jobs:
             echo >> ~/.pypirc
             echo "[pypi]" >> ~/.pypirc
             echo "repository:https://upload.pypi.org/legacy/" >> ~/.pypirc
-            echo "username:$PYPI_USERNAME" >> ~/.pypirc
-            echo "password:$PYPI_PASSWORD" >> ~/.pypirc
+            echo "username = __token__" >> ~/.pypirc
+            echo "password = ${PYPI_AUTH_TOKEN}" >> ~/.pypirc
             echo >> ~/.pypirc
             version=$(cat .bumpversion.cfg | awk '/current_version / {print $3}')
             python setup.py register -r pypi
