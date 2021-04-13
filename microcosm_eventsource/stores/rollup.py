@@ -16,7 +16,6 @@ def with_labels(dct):
     """
     Add labels to all column clauses in the given dictionary of aggregate query clauses.
 
-
     This is meant to be used with the output of `RollUpStore._aggregate` below, and serves
     as a workaround for an issue in SQLAlchemy currently affecting 1.4.x.
     We should removed this once the issue is fixed in the library.
