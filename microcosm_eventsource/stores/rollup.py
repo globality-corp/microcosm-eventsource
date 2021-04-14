@@ -18,7 +18,7 @@ def with_labels(dct):
 
     This is meant to be used with the output of `RollUpStore._aggregate` below, and serves
     as a workaround for an issue in SQLAlchemy currently affecting 1.4.x.
-    We should remove this once the issue is fixed in the library.
+    We should remove this once the issue is fixed in the library (GLOB-53044).
 
     See:
         https://github.com/sqlalchemy/sqlalchemy/issues/6256#issuecomment-819060298
