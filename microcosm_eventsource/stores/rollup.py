@@ -12,6 +12,24 @@ from microcosm_eventsource.func import ranked
 from microcosm_eventsource.models.rollup import RollUp
 
 
+def with_labels(dct):
+    """
+    Add labels to all column clauses in the given dictionary of aggregate query clauses.
+
+    This is meant to be used with the output of `RollUpStore._aggregate` below, and serves
+    as a workaround for an issue in SQLAlchemy currently affecting 1.4.x.
+    We should remove this once the issue is fixed in the library (GLOB-53044).
+
+    See:
+        https://github.com/sqlalchemy/sqlalchemy/issues/6256#issuecomment-819060298
+
+    """
+    return {
+        key: value.label(key)
+        for key, value in dct.items()
+    }
+
+
 class RollUpStore:
 
     def __init__(self, container_store, event_store, rollup=RollUp):
@@ -49,7 +67,7 @@ class RollUpStore:
 
         """
         container = self._retrieve_container(identifier)
-        aggregate = self._aggregate()
+        aggregate = with_labels(self._aggregate())
 
         try:
             return self._to_model(
@@ -98,7 +116,7 @@ class RollUpStore:
         Implement a rolled-up search of containers by their most recent event.
 
         """
-        aggregate = self._aggregate(**kwargs)
+        aggregate = with_labels(self._aggregate(**kwargs))
         return [
             self._to_model(aggregate, *row)
             for row in self._search_query(aggregate, **kwargs).all()
@@ -147,7 +165,8 @@ class RollUpStore:
         # results returned from this method does not match the limit provided
 
         container = self._search_container(**kwargs)
-        aggregate = aggregate or self._aggregate(**kwargs)
+        aggregate = with_labels(aggregate or self._aggregate(**kwargs))
+
         query = self._filter(
             self._rollup_query(
                 container,
