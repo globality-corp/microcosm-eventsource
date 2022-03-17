@@ -235,16 +235,6 @@ class TaskEventSchema(NewTaskEventSchema, EventSchema):
     pass
 
 
-# class SearchTaskEventSchema(SearchEventSchema):
-#     task_id = fields.UUID()
-#     event_type = EnumField(TaskEventType)
-
-# TODO - do we need to grab the async one from microcosm-fastapi
-# @binding("session_factory")
-# def configure_session_factory(graph):
-#     return register_session_factory(graph, "db", SessionContext.make)
-
-
 @binding("task_event_controller_async")
 class TaskEventController(EventController):
     def __init__(self, graph):
