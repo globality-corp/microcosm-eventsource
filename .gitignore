@@ -94,3 +94,7 @@ docs/_build/
 target/
 
 .mypy_cache/
+
+
+.hypothesis/
+coverage/
