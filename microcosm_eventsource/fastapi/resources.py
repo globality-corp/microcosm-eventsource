@@ -11,7 +11,7 @@ from pydantic import validator, ValidationError
 
 class EventSchema(BaseSchema):
     clock: Optional[int] = None
-    createdTimestamp: float
+    created_timestamp: float
     id: UUID
     version: int
     parent_id: Optional[bool] = None

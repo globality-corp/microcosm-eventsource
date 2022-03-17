@@ -2,11 +2,15 @@
 Async Event store.
 
 """
+from typing import Optional
+
 import psycopg2
 from microcosm_postgres.models import Model
 from microcosm_fastapi.database.store import StoreAsync
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload, undefer
 
 from microcosm_eventsource.errors import (
     ConcurrentStateConflictError,
@@ -19,7 +23,7 @@ class EventStoreAsync(StoreAsync):
     Async event persistence operations.
 
     """
-    async def retrieve_most_recent(self, **kwargs):
+    async def retrieve_most_recent(self, session: Optional[AsyncSession] = None, **kwargs):
         """
         Retrieve the most recent by container id and event type.
 
@@ -27,9 +31,10 @@ class EventStoreAsync(StoreAsync):
         container_id = kwargs.pop(self.model_class.container_id_name)
         return await self._retrieve_most_recent(
             self.model_class.container_id == container_id,
+            session=session,
         )
 
-    async def retrieve_most_recent_by_event_type(self, event_type, **kwargs):
+    async def retrieve_most_recent_by_event_type(self, event_type, session: Optional[AsyncSession] = None, **kwargs):
         """
         Retrieve the most recent by container id and event type.
 
@@ -38,9 +43,10 @@ class EventStoreAsync(StoreAsync):
         return self._retrieve_most_recent(
             self.model_class.container_id == container_id,
             self.model_class.event_type == event_type,
+            session=session,
         )
 
-    async def retrieve_most_recent_with_update_lock(self, **kwargs):
+    async def retrieve_most_recent_with_update_lock(self, session: Optional[AsyncSession] = None, **kwargs):
         """
         Retrieve the most recent by container id, while taking a ON UPDATE lock with NOWAIT OPTION.
         If another instance of event is being processed simultaneously, it would raise LockNotAvailable error.
@@ -51,7 +57,8 @@ class EventStoreAsync(StoreAsync):
         try:
             return self._retrieve_most_recent(
                 self.model_class.container_id == container_id,
-                for_update=True
+                for_update=True,
+                session=session,
             )
         except OperationalError as exc:
             # TODO - uncomment and fix me
@@ -155,7 +162,7 @@ class EventStoreAsync(StoreAsync):
             self.model_class.clock.desc(),
         )
 
-    async def _retrieve_most_recent(self, *criterion, for_update=False):
+    async def _retrieve_most_recent(self, *criterion, for_update=False, session: Optional[AsyncSession] = None):
         """
         Retrieve the most recent event by some criterion.
 
@@ -166,6 +173,6 @@ class EventStoreAsync(StoreAsync):
             *criterion
         ))
         if for_update:
-            return query.with_for_update(nowait=True).first()
+            return await self.get_first(query.with_for_update(nowait=True))
         else:
-            return query.first()
+            return await self.get_first(query, session)

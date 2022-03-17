@@ -3,9 +3,7 @@ Test fixtures.
 
 """
 from datetime import datetime
-from enum import Enum
 
-# from marshmallow import Schema, fields
 from typing import AsyncContextManager, Optional
 from uuid import UUID
 
@@ -14,7 +12,6 @@ from microcosm.api import binding
 from microcosm_fastapi.conventions.schemas import BaseSchema, SearchSchema
 from microcosm_fastapi.database.store import StoreAsync
 from microcosm_fastapi.namespaces import Namespace
-from microcosm_flask.fields import EnumField
 from microcosm_postgres.models import EntityMixin, Model, UnixTimestampEntityMixin
 from sqlalchemy import (
     Column,
@@ -26,7 +23,7 @@ from sqlalchemy import (
 from sqlalchemy_utils import UUIDType
 
 from microcosm_eventsource.accumulation import alias, keep, union
-from microcosm_eventsource.event_types import EventType, EventTypeUnion, event_info
+from microcosm_eventsource.fastapi.event_types import EventType, EventTypeUnion, event_info
 from microcosm_eventsource.fastapi.controllers import EventController
 from microcosm_eventsource.fastapi.factory import EventFactoryAsync
 from microcosm_eventsource.fastapi.resources import EventSchema, SearchEventSchema
@@ -124,7 +121,7 @@ class BasicTaskEventType(EventType):
     )
 
 
-class AdvancedTaskEventType(Enum):
+class AdvancedTaskEventType(EventType):
     REASSIGNED = event_info(
         follows=event("STARTED"),
         accumulate=keep(),
@@ -178,6 +175,8 @@ class TaskEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
     __tablename__ = "task_event"
     __eventtype__ = TaskEventType
     __container__ = Task
+
+    __mapper_args__ = {"eager_defaults": True}
 
     assignee = Column(String)
     deadline = Column(DateTime)
@@ -269,13 +268,12 @@ class TaskEventController(EventController):
     async def create(
         self, body: NewTaskEventSchema, request: Request, db_session: AsyncContextManager
     ) -> TaskEventSchema:
-
-        instance = Task(**body.dict())
+        kw_args = {**body.dict()}
+        del kw_args["event_type"]
 
         async with db_session as session:
-            breakpoint()
-            # We'll need to rework this call to deal with the factory
-            return await super().store.create(request, instance, session=session)
+            result = await super().create(request, session=session, event_type=body.event_type, **kw_args)
+            return result
 
     async def retrieve(
         self, task_event_id: UUID, db_session: AsyncContextManager
@@ -304,7 +302,7 @@ class TaskEventController(EventController):
     async def replace(
             self, task_event_id: UUID, body: NewTaskEventSchema, request: Request, db_session: AsyncContextManager
     ) -> TaskEventSchema:
-        instance = Task(**body.dict())
+        instance = TaskEvent(**body.dict())
 
         async with db_session as session:
             return await super()._replace(identifier=task_event_id, body=instance, session=session)

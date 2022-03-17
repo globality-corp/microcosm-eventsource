@@ -4,12 +4,15 @@ Async Factory for events.
 Allows event creation logic to be decoupled from controllers.
 
 """
+from typing import Optional
+
 from inflection import camelize
 from microcosm_fastapi.helpers import run_as_async
 from microcosm_flask.conventions.encoding import with_context
 from microcosm_fastapi.naming import name_for
 from microcosm_fastapi.operations import Operation
 from microcosm_pubsub.conventions import created
+from sqlalchemy.ext.asyncio import AsyncSession
 from werkzeug.exceptions import UnprocessableEntity
 from fastapi import Request
 
@@ -64,7 +67,7 @@ class EventFactoryAsync:
     def event_info_cls(self):
         return EventInfo
 
-    async def create(self, request: Request, ns, sns_producer, event_type, parent=None, version=None, **kwargs):
+    async def create(self, request: Request, ns, sns_producer, event_type, parent=None, version=None, session: Optional[AsyncSession] = None, **kwargs):
         """
         Create an event, validating the underlying state machine.
 
@@ -73,12 +76,12 @@ class EventFactoryAsync:
         self.validate_required_fields(event_info, **kwargs)
         self.validate_transition(event_info, **kwargs)
         if not event_info.parent:
-            event_info.parent = await self.event_store.retrieve_most_recent(**kwargs)
-        await self.create_transition(request, event_info, **kwargs)
-        await self.create_auto_transition_event(request, ns, sns_producer, parent=event_info.event, version=version, **kwargs)
+            event_info.parent = await self.event_store.retrieve_most_recent(session=session, **kwargs)
+        await self.create_transition(request, event_info, session=session, **kwargs)
+        await self.create_auto_transition_event(request, ns, sns_producer, parent=event_info.event, version=version, session=session, **kwargs)
         return event_info.event
 
-    async def create_transition(self, request: Request, event_info, **kwargs):
+    async def create_transition(self, request: Request, event_info, session: Optional[AsyncSession] = None, **kwargs):
         """
         Process an event state transition.
 
@@ -89,9 +92,9 @@ class EventFactoryAsync:
 
         """
         self.process_state_transition(event_info)
-        await self.create_event(request, event_info, **kwargs)
+        await self.create_event(request, event_info, session=session, **kwargs)
 
-    async def create_auto_transition_event(self, request: Request, ns, sns_producer, parent, **kwargs):
+    async def create_auto_transition_event(self, request: Request, ns, sns_producer, parent, session: Optional[AsyncSession] = None, **kwargs):
         """
         Creates the next auto-transition event if exist
 
@@ -102,7 +105,7 @@ class EventFactoryAsync:
         ]
         if not auto_transition_events:
             return
-        await self.create(request, ns, sns_producer, event_type=auto_transition_events[0], parent=parent, **kwargs)
+        await self.create(request, ns, sns_producer, event_type=auto_transition_events[0], parent=parent, session=session, **kwargs)
 
     def validate_required_fields(self, event_info, **kwargs):
         """
@@ -158,7 +161,7 @@ class EventFactoryAsync:
         parent_version = event_info.parent.version if event_info.parent else None
         event_info.version = event_info.event_type.next_version(parent_version)
 
-    async def create_event(self, request, event_info, skip_publish=False, **kwargs):
+    async def create_event(self, request, event_info, skip_publish=False, session: Optional[AsyncSession] = None, **kwargs):
         """
         Create the event and publish that it was created.
 
@@ -181,16 +184,16 @@ class EventFactoryAsync:
             **kwargs
         )
 
-        event_info.event = await self.create_instance(event_info, instance)
+        event_info.event = await self.create_instance(event_info, instance, session)
 
         if not skip_publish:
             await self.publish_event(request, event_info)
 
-    async def create_instance(self, event_info, instance):
+    async def create_instance(self, event_info, instance,  session: Optional[AsyncSession] = None,):
         if event_info.parent is None:
-            return await self.event_store.create(instance)
+            return await self.event_store.create(instance, session)
         else:
-            return await self.event_store.upsert_on_index_elements(instance)
+            return await self.event_store.upsert_on_index_elements(instance, session)
 
     async def publish_event(self, request: Request, event_info):
         """

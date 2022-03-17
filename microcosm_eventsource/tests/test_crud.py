@@ -57,6 +57,7 @@ class TestTaskEventCRUDRoutes:
             "task_event_controller",
             "task_crud_routes",
         )
+
         self.client = self.graph.flask.test_client()
         recreate_all(self.graph)
 
