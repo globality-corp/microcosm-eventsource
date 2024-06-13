@@ -94,3 +94,6 @@ docs/_build/
 target/
 
 .mypy_cache/
+
+
+/**/coverage/**/*

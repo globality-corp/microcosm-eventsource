@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 
 
 project = "microcosm-eventsource"
-version = "2.5.0"
+version = "3.0.0"
 
 setup(
     name=project,
@@ -15,17 +15,17 @@ setup(
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     include_package_data=True,
     zip_safe=False,
-    python_requires=">=3.6",
+    python_requires=">=3.11",
     keywords="microcosm",
     install_requires=[
-        "microcosm>=2.12.0",
-        "microcosm-flask>=2.8.0",
-        "microcosm-logging>=1.5.0",
-        "microcosm-postgres>=2.2.0",
-        "microcosm-pubsub>=2.23.0",
+        "microcosm>=4.0.0",
+        "microcosm-flask>=6.0.0",
+        "microcosm-logging>=2.0.0",
+        "microcosm-postgres>=4.0.0",
+        "microcosm-pubsub>=3.0.0",
+        "sqlalchemy>=2.0.0",
     ],
     setup_requires=[
-        "nose>=1.3.6",
     ],
     dependency_links=[
     ],
@@ -37,4 +37,27 @@ setup(
         "coverage>=3.7.1",
         "PyHamcrest>=1.9.0",
     ],
+    extras_require={
+        "test": [
+            "aws-encryption-sdk>=2.0.0",
+            "cryptography>=35",
+            "coverage>=3.7.1",
+            "PyHamcrest>=1.8.5",
+            "pytest-cov>=3.0.0",
+            "pytest>=6.2.5",
+            "pytest-cov>=5.0.0",
+        ],
+        "lint": [
+            "flake8",
+            "flake8-print",
+            "flake8-isort",
+        ],
+        "typehinting": [
+            "mypy",
+            "types-psycopg2",
+            "types-python-dateutil",
+            "types-pytz",
+            "types-setuptools",
+        ],
+    },
 )

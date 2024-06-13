@@ -73,8 +73,8 @@ For example:
         __eventtype__ = TaskEventType
         __container__ = Task
 
-        assignee = Column(String)
-        deadline = Column(DateTime)
+        assignee = mapped_column(String)
+        deadline = mapped_column(DateTime)
 
     @binding("task_event_store")
     class TaskEventStore(EventStore):

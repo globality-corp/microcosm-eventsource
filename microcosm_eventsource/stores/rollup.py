@@ -254,7 +254,7 @@ class RollUpStore:
                 aggregate,
             ),
             **kwargs
-        ).from_self()
+        )._legacy_from_self()
 
     def _query(self, container, aggregate):
         """
