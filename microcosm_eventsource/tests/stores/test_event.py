@@ -41,7 +41,7 @@ from microcosm_eventsource.tests.fixtures import (
 
 class TestEventStore:
 
-    def setup(self):
+    def setup_method(self):
         self.graph = create_object_graph(
             "microcosm_eventsource",
             root_path=join(dirname(__file__), pardir),
@@ -52,20 +52,20 @@ class TestEventStore:
             "task_event_store",
             "activity_store",
             "activity_event_store",
+            "postgres",
+            "sessionmaker",
+            "session_factory",
         )
         self.store = self.graph.task_event_store
 
-        self.context = SessionContext(self.graph)
-        self.context.recreate_all()
-        self.context.open()
-
-        with transaction() as session:
+        with SessionContext(self.graph) as ctx, transaction() as session:
+            ctx.recreate_all()
             self.task = Task().create()
+            self.task_id = self.task.id
 
             self.offset = session.execute(Sequence("task_event_clock_seq"))
 
-    def teardown(self):
-        self.context.close()
+    def teardown_method(self):
         self.graph.postgres.dispose()
 
     def test_column_declarations(self):
@@ -79,56 +79,58 @@ class TestEventStore:
         assert_that(TaskEvent.container_id, is_(equal_to(TaskEvent.task_id)))
 
         task_event = TaskEvent()
-        task_event.container_id = self.task.id
-        assert_that(task_event.container_id, is_(equal_to(self.task.id)))
-        assert_that(task_event.task_id, is_(equal_to(self.task.id)))
+        task_event.container_id = self.task_id
+        assert_that(task_event.container_id, is_(equal_to(self.task_id)))
+        assert_that(task_event.task_id, is_(equal_to(self.task_id)))
 
     def test_create_retrieve(self):
         """
         An event can be retrieved after it is created.
 
         """
-        with transaction():
+        with SessionContext(self.graph), transaction():
             task_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
             self.store.create(task_event)
+            task_event_id = task_event.id
 
-        assert_that(task_event.clock, is_(equal_to(1 + self.offset)))
-        assert_that(task_event.parent_id, is_(none()))
-        assert_that(task_event.state, contains(TaskEventType.CREATED))
-        assert_that(task_event.version, is_(equal_to(1)))
+            assert_that(task_event.clock, is_(equal_to(1 + self.offset)))
+            assert_that(task_event.parent_id, is_(none()))
+            assert_that(task_event.state, contains(TaskEventType.CREATED))
+            assert_that(task_event.version, is_(equal_to(1)))
 
-        assert_that(
-            self.store.retrieve(task_event.id),
-            is_(equal_to(task_event)),
-        )
+            assert_that(
+                self.store.retrieve(task_event_id),
+                is_(equal_to(task_event)),
+            )
 
     def test_non_initial_event_requires_parent_id(self):
         """
         A non-initial event must have a previous event.
 
         """
-        task_event = TaskEvent(
-            event_type=TaskEventType.STARTED,
-            task_id=self.task.id,
-        )
-        assert_that(
-            calling(self.store.create).with_args(task_event),
-            raises(ModelIntegrityError),
-        )
+        with SessionContext(self.graph):
+            task_event = TaskEvent(
+                event_type=TaskEventType.STARTED,
+                task_id=self.task_id,
+            )
+            assert_that(
+                calling(self.store.create).with_args(task_event),
+                raises(ModelIntegrityError),
+            )
 
     def test_multi_valued_state(self):
         """
         A state can contain multiple values.
 
         """
-        with transaction():
+        with SessionContext(self.graph), transaction():
             task_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
                 state=(TaskEventType.CREATED, TaskEventType.ASSIGNED),
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
             self.store.create(task_event)
 
@@ -145,19 +147,19 @@ class TestEventStore:
         with transaction():
             created_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
             self.store.create(created_event)
             assigned_event = TaskEvent(
                 assignee="Alice",
                 event_type=TaskEventType.ASSIGNED,
                 parent_id=created_event.id,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
             self.store.create(assigned_event)
 
         assert_that(
-            self.store.retrieve_most_recent(task_id=self.task.id),
+            self.store.retrieve_most_recent(task_id=self.task_id),
             is_(equal_to(assigned_event)),
         )
 
@@ -166,16 +168,16 @@ class TestEventStore:
         Events are unique per parent.
 
         """
-        with transaction():
+        with SessionContext(self.graph), transaction():
             created_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
             self.store.create(created_event)
             task_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
                 parent_id=created_event.id,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
             self.store.create(task_event)
 
@@ -184,7 +186,7 @@ class TestEventStore:
                 TaskEvent(
                     event_type=TaskEventType.CREATED,
                     parent_id=created_event.id,
-                    task_id=self.task.id,
+                    task_id=self.task_id,
                 ),
             ),
             raises(DuplicateModelError),
@@ -195,16 +197,16 @@ class TestEventStore:
         Events with a duplicate index elements can be upserted.
 
         """
-        with transaction():
+        with SessionContext(self.graph), transaction():
             created_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
             self.store.create(created_event)
             task_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
                 parent_id=created_event.id,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
             self.store.create(task_event)
 
@@ -212,7 +214,7 @@ class TestEventStore:
             TaskEvent(
                 event_type=TaskEventType.CREATED,
                 parent_id=created_event.id,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
         )
 
@@ -223,16 +225,16 @@ class TestEventStore:
         Events with a duplicate index elements cannot be upsert if they don't match.
 
         """
-        with transaction():
+        with SessionContext(self.graph), transaction():
             created_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
             self.store.create(created_event)
             task_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
                 parent_id=created_event.id,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
             self.store.create(task_event)
 
@@ -240,7 +242,7 @@ class TestEventStore:
             calling(self.store.upsert_on_index_elements).with_args(TaskEvent(
                 event_type=TaskEventType.REVISED,
                 parent_id=created_event.id,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )),
             raises(ConcurrentStateConflictError),
         )
@@ -250,7 +252,7 @@ class TestEventStore:
         Events are not unique per parent for False unique_parent events.
 
         """
-        with transaction():
+        with SessionContext(self.graph), transaction():
             self.activity = Activity().create()
             created_event = ActivityEvent(
                 event_type=ActivityEventType.CREATED,
@@ -273,41 +275,43 @@ class TestEventStore:
         assert_that(same_parent_task_event.parent_id, is_(created_event.id))
 
     def test_retrieve_with_update_lock(self):
-        with transaction():
+        with SessionContext(self.graph), transaction():
             created_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
             self.store.create(created_event)
-        assert_that(
-            self.store.retrieve_most_recent_with_update_lock(task_id=self.task.id),
-            is_(equal_to(created_event)),
-        )
+
+            assert_that(
+                self.store.retrieve_most_recent_with_update_lock(task_id=self.task_id),
+                is_(equal_to(created_event)),
+            )
 
     def test_retrieve_with_update_lock_exception(self):
-        with transaction():
+        with SessionContext(self.graph), transaction():
             created_event = TaskEvent(
                 event_type=TaskEventType.CREATED,
-                task_id=self.task.id,
+                task_id=self.task_id,
             )
             self.store.create(created_event)
 
-        with patch.object(Query, 'with_for_update') as mocked_with_for_update:
-            mocked_with_for_update.side_effect = OperationalError(
-                statement="", params="",
-                orig=psycopg2.errors.LockNotAvailable())
+        with SessionContext(self.graph):
+            with patch.object(Query, 'with_for_update') as mocked_with_for_update:
+                mocked_with_for_update.side_effect = OperationalError(
+                    statement="", params="",
+                    orig=psycopg2.errors.LockNotAvailable())
 
-            assert_that(
-                calling(self.store.retrieve_most_recent_with_update_lock).with_args(
-                    task_id=self.task.id,
-                ), raises(ContainerLockNotAvailableRetry),
-            )
+                assert_that(
+                    calling(self.store.retrieve_most_recent_with_update_lock).with_args(
+                        task_id=self.task_id,
+                    ), raises(ContainerLockNotAvailableRetry),
+                )
+        with SessionContext(self.graph):
+            with patch.object(Query, 'with_for_update') as mocked_with_for_update:
+                mocked_with_for_update.side_effect = Exception()
 
-        with patch.object(Query, 'with_for_update') as mocked_with_for_update:
-            mocked_with_for_update.side_effect = Exception()
-
-            assert_that(
-                calling(self.store.retrieve_most_recent_with_update_lock).with_args(
-                    task_id=self.task.id,
-                ), raises(Exception),
-            )
+                assert_that(
+                    calling(self.store.retrieve_most_recent_with_update_lock).with_args(
+                        task_id=self.task_id,
+                    ), raises(Exception),
+                )

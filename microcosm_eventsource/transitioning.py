@@ -39,7 +39,7 @@ class Transition(metaclass=ABCMeta):
 class Nothing(Transition):
 
     def __call__(self, cls, state):
-        return not(state)
+        return not state
 
     def __bool__(self):
         return False

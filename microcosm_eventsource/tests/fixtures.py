@@ -13,12 +13,12 @@ from microcosm_postgres.context import SessionContext
 from microcosm_postgres.models import EntityMixin, Model, UnixTimestampEntityMixin
 from microcosm_postgres.store import Store
 from sqlalchemy import (
-    Column,
     DateTime,
     ForeignKey,
     Integer,
     String,
 )
+from sqlalchemy.orm import mapped_column
 from sqlalchemy_utils import UUIDType
 
 from microcosm_eventsource.accumulation import alias, keep, union
@@ -62,7 +62,7 @@ class SimpleTestObjectEvent(EntityMixin, metaclass=EventMeta):
     __eventtype__ = SimpleTestObjectEventType
     __container__ = SimpleTestObject
 
-    simple_test_object_id = Column(
+    simple_test_object_id = mapped_column(
         UUIDType(),
         ForeignKey("simple_test_object.id"),
         nullable=True,
@@ -73,14 +73,14 @@ class SimpleTestObjectEvent(EntityMixin, metaclass=EventMeta):
 class SimpleTestObjectStore(Store):
 
     def __init__(self, graph):
-        super(SimpleTestObjectStore, self).__init__(graph, SimpleTestObject)
+        super().__init__(graph, SimpleTestObject)
 
 
 @binding("simple_test_object_event_store")
 class SimpleTestObjectEventStore(EventStore):
 
     def __init__(self, graph):
-        super(SimpleTestObjectEventStore, self).__init__(graph, SimpleTestObjectEvent)
+        super().__init__(graph, SimpleTestObjectEvent)
 
 
 class FlexibleTaskEventType(EventType):
@@ -147,9 +147,9 @@ SubTaskEventType = EventTypeUnion("SubTaskEventType", BasicTaskEventType)
 class Task(UnixTimestampEntityMixin, Model):
     __tablename__ = "task"
 
-    description = Column(String)
+    description = mapped_column(String)
 
-    discriminator = Column(String, nullable=False)
+    discriminator = mapped_column(String, nullable=False)
 
     __mapper_args__ = dict(
         polymorphic_identity="task",
@@ -160,12 +160,12 @@ class Task(UnixTimestampEntityMixin, Model):
 class SubTask(Task):
     __tablename__ = "sub_task"
 
-    id = Column(
+    id = mapped_column(
         UUIDType,
         ForeignKey("task.id"),
         primary_key=True,
     )
-    priority = Column(Integer)
+    priority = mapped_column(Integer)
 
     __mapper_args__ = dict(
         polymorphic_identity="sub_task",
@@ -177,8 +177,8 @@ class TaskEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
     __eventtype__ = TaskEventType
     __container__ = Task
 
-    assignee = Column(String)
-    deadline = Column(DateTime)
+    assignee = mapped_column(String)
+    deadline = mapped_column(DateTime)
 
 
 class SubTaskEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
@@ -186,15 +186,15 @@ class SubTaskEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
     __eventtype__ = SubTaskEventType
     __container__ = SubTask
 
-    assignee = Column(String)
-    deadline = Column(DateTime)
+    assignee = mapped_column(String)
+    deadline = mapped_column(DateTime)
 
 
 @binding("task_store")
 class TaskStore(Store):
 
     def __init__(self, graph):
-        super(TaskStore, self).__init__(graph, Task)
+        super().__init__(graph, Task)
 
     def _order_by(self, query, **kwargs):
         return query.order_by(Task.created_at.desc())
@@ -204,7 +204,7 @@ class TaskStore(Store):
 class SubTaskStore(Store):
 
     def __init__(self, graph):
-        super(SubTaskStore, self).__init__(graph, SubTask)
+        super().__init__(graph, SubTask)
 
     def _order_by(self, query, **kwargs):
         return query.order_by(
@@ -217,14 +217,14 @@ class SubTaskStore(Store):
 class TaskEventStore(EventStore):
 
     def __init__(self, graph):
-        super(TaskEventStore, self).__init__(graph, TaskEvent)
+        super().__init__(graph, TaskEvent)
 
 
 @binding("sub_task_event_store")
 class SubTaskEventStore(EventStore):
 
     def __init__(self, graph):
-        super(SubTaskEventStore, self).__init__(graph, SubTaskEvent)
+        super().__init__(graph, SubTaskEvent)
 
 
 class NewTaskEventSchema(Schema):
@@ -251,7 +251,7 @@ def configure_session_factory(graph):
 @binding("task_event_controller")
 class TaskEventController(EventController):
     def __init__(self, graph):
-        super(TaskEventController, self).__init__(graph, graph.task_event_store)
+        super().__init__(graph, graph.task_event_store)
         self.ns = Namespace(
             subject=TaskEvent,
             version="v1",
@@ -292,7 +292,7 @@ class ActivityEventType(EventType):
 class Activity(UnixTimestampEntityMixin, Model):
     __tablename__ = "activity"
 
-    description = Column(String)
+    description = mapped_column(String)
 
 
 class ActivityEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
@@ -302,18 +302,18 @@ class ActivityEvent(UnixTimestampEntityMixin, metaclass=EventMeta):
     # Supports multiple children per parent
     __unique_parent__ = False
 
-    assignee = Column(String)
+    assignee = mapped_column(String)
 
 
 @binding("activity_store")
 class ActivityStore(Store):
 
     def __init__(self, graph):
-        super(ActivityStore, self).__init__(graph, Activity)
+        super().__init__(graph, Activity)
 
 
 @binding("activity_event_store")
 class ActivityEventStore(EventStore):
 
     def __init__(self, graph):
-        super(ActivityEventStore, self).__init__(graph, ActivityEvent)
+        super().__init__(graph, ActivityEvent)
