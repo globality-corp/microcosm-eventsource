@@ -49,7 +49,7 @@ class SimpleObjectTestRollupStore(RollUpStore):
 
 class TestRolledUpEventStore:
 
-    def setup(self):
+    def setup_method(self):
         self.graph = create_object_graph(
             "microcosm_eventsource",
             root_path=join(dirname(__file__), pardir),
@@ -58,16 +58,17 @@ class TestRolledUpEventStore:
         self.graph.use(
             "simple_test_object_store",
             "simple_test_object_event_store",
+            "postgres",
+            "sessionmaker",
+            "session_factory",
         )
         self.store = SimpleObjectTestRollupStore(self.graph)
         self.event_store = self.graph.simple_test_object_event_store
 
-        self.context = SessionContext(self.graph)
-        self.context.recreate_all()
-        self.context.open()
+        with SessionContext(self.graph) as ctx:
+            ctx.recreate_all()
 
-    def teardown(self):
-        self.context.close()
+    def teardown_method(self):
         self.graph.postgres.dispose()
 
     def create_events(self, until=None, **kwargs):
@@ -79,40 +80,37 @@ class TestRolledUpEventStore:
         return events
 
     def iter_events(self, simple_test_object=None):
-        with transaction():
-            event = self.event_store.create(
-                SimpleTestObjectEvent(
-                    event_type=str(SimpleTestObjectEventType.CREATED),
-                    simple_test_object_id=simple_test_object.id,
-                ),
-            )
+        event = self.event_store.create(
+            SimpleTestObjectEvent(
+                event_type=str(SimpleTestObjectEventType.CREATED),
+                simple_test_object_id=simple_test_object.id,
+            ),
+        )
 
         yield event
 
-        with transaction():
-            event = self.event_store.create(
-                SimpleTestObjectEvent(
-                    event_type=str(SimpleTestObjectEventType.READY),
-                    parent_id=event.id,
-                    simple_test_object_id=simple_test_object.id,
-                ),
-            )
+        event = self.event_store.create(
+            SimpleTestObjectEvent(
+                event_type=str(SimpleTestObjectEventType.READY),
+                parent_id=event.id,
+                simple_test_object_id=simple_test_object.id,
+            ),
+        )
 
         yield event
 
-        with transaction():
-            event = self.event_store.create(
-                SimpleTestObjectEvent(
-                    event_type=str(SimpleTestObjectEventType.DONE),
-                    parent_id=event.id,
-                    simple_test_object_id=simple_test_object.id,
-                ),
-            )
+        event = self.event_store.create(
+            SimpleTestObjectEvent(
+                event_type=str(SimpleTestObjectEventType.DONE),
+                parent_id=event.id,
+                simple_test_object_id=simple_test_object.id,
+            ),
+        )
 
         yield event
 
     def test_search_by_limit(self):
-        with transaction():
+        with SessionContext(self.graph), transaction():
             object1 = SimpleTestObject().create()
             object2 = SimpleTestObject().create()
             object3 = SimpleTestObject().create()

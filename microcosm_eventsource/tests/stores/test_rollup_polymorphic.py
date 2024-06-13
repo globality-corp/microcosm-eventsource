@@ -29,7 +29,7 @@ class SubTaskRollUpStore(RollUpStore):
 
 class TestPolymorphicEntityRolledUpEventStore:
 
-    def setup(self):
+    def setup_method(self):
         self.graph = create_object_graph(
             "microcosm_eventsource",
             root_path=join(dirname(__file__), pardir),
@@ -58,7 +58,7 @@ class TestPolymorphicEntityRolledUpEventStore:
                 sub_task_id=self.sub_task.id,
             ).create()
 
-    def teardown(self):
+    def teardown_method(self):
         self.context.close()
         self.graph.postgres.dispose()
 

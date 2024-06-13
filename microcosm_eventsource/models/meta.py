@@ -8,13 +8,13 @@ from microcosm_postgres.models import Model
 from microcosm_postgres.types import EnumType, Serial
 from sqlalchemy import (
     CheckConstraint,
-    Column,
     FetchedValue,
     ForeignKey,
     Index,
     Integer,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.orm import mapped_column
 from sqlalchemy_utils import UUIDType
 
 from microcosm_eventsource.models.alias import ColumnAlias
@@ -31,7 +31,7 @@ def default_state(context):
 
 def join_event_types(event_types):
     return ",".join(
-        "'{}'".format(event_type.name)
+        f"'{event_type.name}'"
         for event_type in event_types
     )
 
@@ -64,7 +64,7 @@ class EventMeta(MetaClass):
 
         """
         if any(type(base) is EventMeta for base in bases):
-            return super(EventMeta, cls).__new__(cls, name, bases, dct)
+            return super().__new__(cls, name, bases, dct)
 
         # add model to expected bases
         bases = bases + (BaseEvent, Model,)
@@ -79,7 +79,7 @@ class EventMeta(MetaClass):
             unique_parent=dct.get("__unique_parent__", True)
         ))
 
-        return super(EventMeta, cls).__new__(cls, name, bases, dct)
+        return super().__new__(cls, name, bases, dct)
 
     def make_declarations(cls, container_name, event_type, table_name, table_args, unique_parent):
         """
@@ -107,18 +107,18 @@ class EventMeta(MetaClass):
          -  Each event has a non-nullable serial clock to ensure total ordering.
 
         """
-        container_id = "{}.id".format(container_name)
-        container_id_name = "{}_id".format(container_name)
-        parent_id = "{}.id".format(table_name)
+        container_id = f"{container_name}.id"
+        container_id_name = f"{container_name}_id"
+        parent_id = f"{table_name}.id"
 
         return {
             # columns
-            container_id_name: Column(UUIDType, ForeignKey(container_id), nullable=False),
-            "event_type": Column(EnumType(event_type), nullable=False),
-            "clock": Column(Serial, server_default=FetchedValue(), nullable=False, unique=True),
-            "parent_id": Column(UUIDType, ForeignKey(parent_id), nullable=True, unique=unique_parent),
-            "state": Column(ARRAY(EnumType(event_type)), nullable=False, default=default_state),
-            "version": Column(Integer, default=1, nullable=False),
+            container_id_name: mapped_column(UUIDType, ForeignKey(container_id), nullable=False),
+            "event_type": mapped_column(EnumType(event_type), nullable=False),
+            "clock": mapped_column(Serial, server_default=FetchedValue(), nullable=False, unique=True),
+            "parent_id": mapped_column(UUIDType, ForeignKey(parent_id), nullable=True, unique=unique_parent),
+            "state": mapped_column(ARRAY(EnumType(event_type)), nullable=False, default=default_state),
+            "version": mapped_column(Integer, default=1, nullable=False),
 
             # shortcuts
             "container_id": ColumnAlias(container_id_name),
@@ -155,7 +155,7 @@ class EventMeta(MetaClass):
         return (
             # logical clock is unique and indexed
             Index(
-                "{}_unique_logical_clock".format(table_name),
+                f"{table_name}_unique_logical_clock",
                 container_id_name,
                 "clock",
                 unique=True,
@@ -173,7 +173,7 @@ class EventMeta(MetaClass):
         return (
             # events must have a parent unless they are initial and its the first version
             CheckConstraint(
-                name="require_{}_parent_id".format(table_name),
+                name=f"require_{table_name}_parent_id",
                 sqltext="parent_id IS NOT NULL OR (version = 1 AND event_type IN ({}))".format(
                     join_event_types(item for item in event_type if item.is_initial),
                 ),
@@ -189,7 +189,7 @@ class EventMeta(MetaClass):
         """
         return tuple(
             CheckConstraint(
-                name="require_{}_{}".format(table_name, column_name),
+                name=f"require_{table_name}_{column_name}",
                 sqltext="{} IS NOT NULL OR event_type NOT IN ({})".format(
                     column_name,
                     join_event_types(item for item in event_type.requires(column_name))

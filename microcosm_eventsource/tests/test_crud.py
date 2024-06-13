@@ -28,7 +28,7 @@ from microcosm_eventsource.tests.fixtures import Task, TaskEvent, TaskEventType
 
 
 class TestTaskEventCRUDRoutes:
-    def setup(self):
+    def setup_method(self):
         loader = load_from_dict(
             secret=dict(
                 postgres=dict(
@@ -342,7 +342,7 @@ class TestTaskEventCRUDRoutes:
                 ),
                 call(
                     media_type="application/vnd.globality.pubsub._.created.task_event.ended",
-                    uri="http://localhost/api/v1/task_event/{}".format(ended_task_event.id),
+                    uri=f"http://localhost/api/v1/task_event/{ended_task_event.id}",
                 ),
             ],
         )
@@ -366,7 +366,7 @@ class TestTaskEventCRUDRoutes:
         assert_that(response.status_code, is_(equal_to(201)))
         self.graph.sns_producer.produce.assert_called_with(
             media_type="application/vnd.globality.pubsub._.created.task_event",
-            uri="http://localhost/api/v1/task_event/{}".format(created_event_id),
+            uri=f"http://localhost/api/v1/task_event/{created_event_id}",
         )
 
     def test_search_task_events_by_clock(self):

@@ -10,7 +10,7 @@ from microcosm_eventsource.tests.fixtures import Task, TaskEvent, TaskEventType
 
 class TestLast:
 
-    def setup(self):
+    def setup_method(self):
         self.graph = create_object_graph(
             "microcosm_eventsource",
             root_path=dirname(__file__),
